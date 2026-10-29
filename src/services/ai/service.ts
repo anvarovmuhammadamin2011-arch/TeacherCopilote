@@ -1,4 +1,9 @@
 import {
+  englishQuiz,
+  englishDocument,
+  englishLesson,
+} from "@/features/english/curriculum";
+import {
   resolveMathTopic,
   makeMathTasks,
   mathLessonSections,
@@ -48,6 +53,7 @@ const usage = (kind: string) =>
 export class MockAIService implements AIService {
   async generateLesson(i: AIInput) {
     usage("Dars rejasi");
+    if (i.subject === "Ingliz tili") return delay(englishLesson(i), 650);
     return delay(
       mathLessonSections(
         i.topic,
@@ -69,6 +75,7 @@ export class MockAIService implements AIService {
   }
   async generateQuiz(i: AIInput) {
     usage("Test");
+    if (i.subject === "Ingliz tili") return delay(englishQuiz(i), 650);
     const { topic, matched } = resolveMathTopic(i.topic, i.subject);
     const tasks = makeMathTasks(
       topic,
@@ -156,6 +163,8 @@ export class MockAIService implements AIService {
   }
   async generateDocument(i: AIInput, kind: "conspect" | "homework") {
     usage(kind === "conspect" ? "Konspekt" : "Uy vazifasi");
+    if (i.subject === "Ingliz tili")
+      return delay(englishDocument(i, kind), 650);
     const { topic, matched } = resolveMathTopic(i.topic, i.subject);
     const tasks = makeMathTasks(topic, i.count || 5, i.level, 0, i.grade);
     const intro =

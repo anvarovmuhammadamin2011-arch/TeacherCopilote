@@ -164,11 +164,14 @@ export function Field({
   label,
   children,
   error,
+  hidden = false,
 }: {
   label: string;
   children: ReactNode;
   error?: string;
+  hidden?: boolean;
 }) {
+  if (hidden) return null;
   return (
     <label className="field">
       <span>{label}</span>

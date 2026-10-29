@@ -1,3 +1,5 @@
+import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
+import { documentPath } from "@/features/workspace/subjects";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
@@ -29,7 +31,14 @@ import type { TeachingDocument } from "@/types";
 import { PageHead, Card, Button, Field, Empty } from "@/components/common";
 import "./documents.css";
 
-export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
+export default function Documents({
+  kind,
+  integrated = false,
+}: {
+  kind: "conspect" | "homework" | "exercise";
+  integrated?: boolean;
+}) {
+  const context = usePreparationContext();
   const { id } = useParams();
   const { db, mutate } = useStore();
   const existing = db.documents.find((d) => d.id === id && d.kind === kind);
@@ -37,32 +46,51 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
     existing ? structuredClone(existing) : null,
   );
   const [form, setForm] = useState({
-    topic: existing?.title || "",
-    subject: existing?.subject || db.teacher.subject,
-    grade: existing?.grade || String(teacherClasses(db)[0]?.grade || 8),
-    level: "O‘rta",
-    count: 5,
-    language: "O‘zbek",
+    topic: existing?.title || (integrated ? context.topic : ""),
+    subject:
+      existing?.subject || (integrated ? context.subject : db.teacher.subject),
+    grade:
+      existing?.grade ||
+      (integrated ? context.grade : String(teacherClasses(db)[0]?.grade || 8)),
+    level: existing?.level || "O‘rta",
+    count: existing?.count || 5,
+    language: existing?.language || (integrated ? context.language : "O‘zbek"),
   });
   const [busy, setBusy] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [editing, setEditing] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
+    if (existing)
+      usePreparation.getState().update({
+        subject: existing.subject,
+        grade: existing.grade,
+        topic: existing.title,
+      });
     setDocument(existing ? structuredClone(existing) : null);
     setForm((f) => ({
       ...f,
-      topic: existing?.title || "",
-      subject: existing?.subject || db.teacher.subject,
-      grade: existing?.grade || String(teacherClasses(db)[0]?.grade || 8),
-      level: "O‘rta",
+      topic: existing?.title || (integrated ? context.topic : ""),
+      subject:
+        existing?.subject ||
+        (integrated ? context.subject : db.teacher.subject),
+      grade:
+        existing?.grade ||
+        (integrated
+          ? context.grade
+          : String(teacherClasses(db)[0]?.grade || 8)),
+      level: existing?.level || "O‘rta",
     }));
     setShowKey(false);
     setEditing(false);
   }, [id, kind]);
   const isConspect = kind === "conspect";
-  const name = isConspect ? "Konspekt" : "Uy vazifasi";
-  const path = isConspect ? "conspects" : "homework";
+  const name = isConspect
+    ? "Konspekt"
+    : kind === "exercise"
+      ? "Mashq"
+      : "Uy vazifasi";
+  const path = documentPath(kind);
   const Icon = isConspect ? BookOpen : NotebookPen;
   const saved = db.documents.filter((d) => d.kind === kind);
   const stored = db.documents.find((d) => d.id === document?.id);
@@ -95,20 +123,20 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
         title={name + " yaratish"}
         description={
           isConspect
-            ? "Formulalar, yechilgan misollar va asosiy qoidalar."
-            : "Matematik mashqlar, bosqichli yechimlar va javob kaliti."
+            ? "Mavzu tushuntirishi, misollar va asosiy qoidalar."
+            : "Mashqlar, izohlar va javob kaliti."
         }
         action={
           <span className="studio-feature-label">
-            <Icon size={16} /> Matematika ish maydoni
+            <Icon size={16} /> O‘qituvchi ish maydoni
           </span>
         }
       />
       <div className="studio-demo-note">
         <Sparkles size={16} />
         <p>
-          <b>Demo AI</b> · Matematik shablon asosida misol va yechimlar
-          yaratiladi. Natijani darsingizga moslab tahrirlang.
+          <b>Demo AI</b> · Fan bo‘yicha shablon asosida namuna yaratiladi.
+          Natijani darsingizga moslab tahrirlang.
         </p>
       </div>
       <div className="studio-grid">
@@ -130,7 +158,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                 try {
                   const result = await aiService.generateDocument(
                     { ...form, duration: 45 },
-                    kind,
+                    kind === "conspect" ? "conspect" : "homework",
                   );
                   setDocument({
                     id: document?.id || uid(),
@@ -139,6 +167,9 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                     subject: form.subject,
                     grade: form.grade,
                     date: today(),
+                    level: form.level,
+                    count: form.count,
+                    language: form.language,
                     ...result,
                   });
                   setEditing(false);
@@ -153,7 +184,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                 <div className="studio-form-section">
                   <span>01</span>Mavzu va auditoriya
                 </div>
-                <Field label="Mavzu">
+                <Field label="Mavzu" hidden={integrated}>
                   <input
                     required
                     minLength={3}
@@ -169,7 +200,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                   />
                 </Field>
                 <div className="studio-field-pair">
-                  <Field label="Fan">
+                  <Field label="Fan" hidden={integrated}>
                     <select
                       value={form.subject}
                       onChange={(e) =>
@@ -183,7 +214,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                       )}
                     </select>
                   </Field>
-                  <Field label="Sinf">
+                  <Field label="Sinf" hidden={integrated}>
                     <select
                       value={form.grade}
                       onChange={(e) =>
@@ -199,6 +230,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                   </Field>
                 </div>
                 <MathTopicSuggestions
+                  hidden={integrated}
                   grade={form.grade}
                   subject={form.subject}
                   value={form.topic}
@@ -225,7 +257,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                   </div>
                 </Field>
                 <div className={isConspect ? "" : "studio-field-pair"}>
-                  {kind === "homework" && (
+                  {!isConspect && (
                     <Field label="Mashqlar soni">
                       <input
                         type="number"
@@ -239,7 +271,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                       />
                     </Field>
                   )}
-                  <Field label="Til">
+                  <Field label="Til" hidden={integrated}>
                     <select
                       value={form.language}
                       onChange={(e) =>
@@ -383,7 +415,13 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
               <>
                 <article className="studio-paper">
                   <div className="studio-paper-kicker">
-                    <span>{isConspect ? "DARS KONSPEKTI" : "UY VAZIFASI"}</span>
+                    <span>
+                      {isConspect
+                        ? "DARS KONSPEKTI"
+                        : kind === "exercise"
+                          ? "MASHQLAR"
+                          : "UY VAZIFASI"}
+                    </span>
                     <span>
                       {document.grade}-sinf · {document.subject}
                     </span>
@@ -440,7 +478,7 @@ export default function Documents({ kind }: { kind: "conspect" | "homework" }) {
                     <span>{dateLabel(document.date)}</span>
                   </footer>
                 </article>
-                {kind === "homework" && (
+                {!isConspect && (
                   <div className="studio-answer-panel">
                     <label>
                       <span className="studio-answer-icon">

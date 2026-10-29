@@ -9,7 +9,6 @@ import {
 import {
   PanelLeft,
   Search,
-  Bell,
   Sun,
   Moon,
   ChevronDown,
@@ -56,12 +55,21 @@ export default function Layout() {
     setMobile(false);
     window.scrollTo(0, 0);
   }, [location.pathname]);
+  const sectionPath =
+    location.pathname.includes("/lessons") ||
+    location.pathname.includes("/conspects")
+      ? "prepare"
+      : location.pathname.includes("/quizzes") ||
+          location.pathname.includes("/homework") ||
+          location.pathname.includes("/exercises")
+        ? "tasks"
+        : location.pathname.includes("/calendar")
+          ? "classes"
+          : location.pathname.split("/")[2] || "";
   const active = navigation
     .flatMap((n) => n.items)
     .find((n) =>
-      n.path
-        ? location.pathname.startsWith("/teacher/" + n.path)
-        : location.pathname === "/teacher",
+      n.path ? sectionPath === n.path : location.pathname === "/teacher",
     );
   const groups = [
     {
@@ -84,7 +92,11 @@ export default function Layout() {
         title: x.title,
         href:
           "/teacher/" +
-          (x.kind === "homework" ? "homework" : "conspects") +
+          (x.kind === "conspect"
+            ? "conspects"
+            : x.kind === "exercise"
+              ? "exercises"
+              : "homework") +
           "/" +
           x.id,
       })),
@@ -127,7 +139,7 @@ export default function Layout() {
           </div>
           <div className="brand-text">
             TeacherCopilot <span>AI</span>
-            <small>MATEMATIKA USTOZI UCHUN</small>
+            <small>USTOZNING ISH MAYDONI</small>
           </div>
         </Link>
         <div className="workspace-label">
@@ -147,20 +159,19 @@ export default function Layout() {
                   title={collapsed ? item.name : undefined}
                   key={item.path}
                   to={"/teacher" + (item.path ? "/" + item.path : "")}
-                  className={({ isActive }) =>
-                    "nav-item " + (isActive ? "active" : "")
+                  className={() =>
+                    "nav-item " + (sectionPath === item.path ? "active" : "")
                   }
                 >
                   <item.icon size={18} />
                   <span>{item.name}</span>
-                  {"badge" in item && <b className="nav-badge">{item.badge}</b>}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <Link className="sidebar-user" to="/teacher/profile">
+          <div className="sidebar-user">
             <span className="avatar">
               {db.teacher.firstName[0]}
               {db.teacher.lastName[0]}
@@ -169,8 +180,7 @@ export default function Layout() {
               {db.teacher.firstName} {db.teacher.lastName}
               <small>{db.teacher.subject} o‘qituvchisi</small>
             </div>
-            <ChevronRight size={16} />
-          </Link>
+          </div>
         </div>
       </aside>
       <div className="main-wrap">
@@ -220,14 +230,6 @@ export default function Layout() {
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </Button>
-            <Link
-              className="notification-btn"
-              to="/teacher/notifications"
-              aria-label="Bildirishnomalar"
-            >
-              <Bell size={19} />
-              {db.notifications.some((n) => !n.read) && <i />}
-            </Link>
             <span className="header-divider" />
             <Dropdown.Root>
               <Dropdown.Trigger asChild>

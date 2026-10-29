@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { uid } from "@/utils/cn";
 import type { RegistrationDraft, RegistrationClass } from "@/types";
-export const teachingSubjects = ["Matematika", "Algebra", "Geometriya"];
+export const teachingSubjects = ["Matematika", "Ingliz tili"];
 export const regions = [
   "Andijon",
   "Buxoro",
@@ -66,8 +66,8 @@ export const professionalSchema = z.object({
     region: required,
     district: required,
   }),
-  primarySubject: z.enum(["Matematika", "Algebra", "Geometriya"]),
-  additionalSubjects: z.array(z.enum(["Matematika", "Algebra", "Geometriya"])),
+  primarySubject: z.enum(["Matematika", "Ingliz tili"]),
+  additionalSubjects: z.array(z.enum(["Matematika", "Ingliz tili"])),
   experienceRange: required,
   education: required,
   languages: z.array(z.string()).min(1, "Kamida bitta dars tilini tanlang."),
@@ -77,7 +77,7 @@ export const classSchema = z.object({
   name: required,
   grade: z.number().int().min(1).max(11),
   section: required,
-  subject: z.enum(["Matematika", "Algebra", "Geometriya"]),
+  subject: z.enum(["Matematika", "Ingliz tili"]),
   year: z
     .string()
     .regex(/^\d{4}[–-]\d{4}$/, "Masalan, 2026–2027 shaklida yozing.")

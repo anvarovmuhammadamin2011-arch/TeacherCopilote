@@ -329,7 +329,7 @@ export function TeacherRegistration() {
           </span>
         </Link>
         <div className="onboarding-aside-inner">
-          <Badge>Matematika ustozlari uchun</Badge>
+          <Badge>Ustozning ish maydoni</Badge>
           <h2>
             Yaxshi darslar
             <br />
@@ -596,7 +596,7 @@ export function TeacherRegistration() {
                     <SearchInput
                       value={subjectQuery}
                       onChange={setSubjectQuery}
-                      placeholder="Matematik yo‘nalishni qidiring…"
+                      placeholder="Fanni qidiring…"
                     />
                     <div className="subject-chips">
                       {[
@@ -655,8 +655,8 @@ export function TeacherRegistration() {
                         ))}
                     </div>
                     <small className="muted">
-                      Matematika, algebra va geometriya yo‘nalishlarini
-                      tanlashingiz mumkin.
+                      Matematika yoki ingliz tili yo‘nalishlarini tanlashingiz
+                      mumkin.
                     </small>
                   </div>
                   <div className="form-grid">

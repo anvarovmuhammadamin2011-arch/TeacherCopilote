@@ -1,4 +1,7 @@
-import { isMathSubject } from "@/features/mathematics/curriculum";
+import {
+  isSupportedSubject,
+  normalizeSubject,
+} from "@/features/workspace/subjects";
 import { seed } from "./seed";
 import type { Database } from "@/types";
 // Explicit allowlist: retired accounts, rosters, submissions, attendance and invitation codes never enter v4.
@@ -116,55 +119,69 @@ function upgradeTeacherDatabase(raw: unknown): Database {
 
 export function upgradeDatabase(raw: unknown): Database {
   const db = upgradeTeacherDatabase(raw);
-  const previous = (raw as Partial<Database> | null)?.legacyArchive;
-  const merge = <T extends { id: string }>(old: T[], items: T[]) => [
-    ...new Map([...old, ...items].map((x) => [x.id, x])).values(),
+  const archive = (raw as Partial<Database> | null)?.legacyArchive;
+  const merge = <T extends { id: string }>(a: T[], b: T[]) => [
+    ...new Map([...a, ...b].map((x) => [x.id, x])).values(),
   ];
+  const lessons = merge(archive?.lessons || [], db.lessons),
+    quizzes = merge(archive?.quizzes || [], db.quizzes),
+    documents = merge(archive?.documents || [], db.documents),
+    materials = merge(archive?.materials || [], db.materials);
   db.legacyArchive = {
-    lessons: merge(
-      previous?.lessons || [],
-      db.lessons.filter((x) => !isMathSubject(x.subject)),
-    ),
-    quizzes: merge(
-      previous?.quizzes || [],
-      db.quizzes.filter((x) => !isMathSubject(x.subject)),
-    ),
-    documents: merge(
-      previous?.documents || [],
-      db.documents.filter((x) => !isMathSubject(x.subject)),
-    ),
-    materials: merge(
-      previous?.materials || [],
-      db.materials.filter((x) => x.subject && !isMathSubject(x.subject)),
+    lessons: lessons.filter((x) => !isSupportedSubject(x.subject)),
+    quizzes: quizzes.filter((x) => !isSupportedSubject(x.subject)),
+    documents: documents.filter((x) => !isSupportedSubject(x.subject)),
+    materials: materials.filter(
+      (x) => x.subject && !isSupportedSubject(x.subject),
     ),
   };
-  db.lessons = db.lessons.filter((x) => isMathSubject(x.subject));
-  db.quizzes = db.quizzes.filter((x) => isMathSubject(x.subject));
-  db.documents = db.documents.filter((x) => isMathSubject(x.subject));
-  db.materials = db.materials.filter(
-    (x) => !x.subject || isMathSubject(x.subject),
-  );
-  db.teacher.subject = isMathSubject(db.teacher.subject)
-    ? db.teacher.subject
-    : "Matematika";
+  db.lessons = lessons
+    .filter((x) => isSupportedSubject(x.subject))
+    .map((x) => ({ ...x, subject: normalizeSubject(x.subject) }));
+  db.quizzes = quizzes
+    .filter((x) => isSupportedSubject(x.subject))
+    .map((x) => ({ ...x, subject: normalizeSubject(x.subject) }));
+  db.documents = documents
+    .filter((x) => isSupportedSubject(x.subject))
+    .map((x) => ({ ...x, subject: normalizeSubject(x.subject) }));
+  db.materials = materials
+    .filter((x) => !x.subject || isSupportedSubject(x.subject))
+    .map((x) => ({
+      ...x,
+      ...(x.subject ? { subject: normalizeSubject(x.subject) } : {}),
+    }));
+  db.teacher.subject = normalizeSubject(db.teacher.subject);
   db.teacherProfiles = db.teacherProfiles
     .filter((p) => p.id !== "teacher-demo")
     .map((p) => ({
       ...p,
-      subject: isMathSubject(p.subject) ? p.subject : "Matematika",
+      subject: normalizeSubject(p.subject),
       professional: {
         ...p.professional,
-        primarySubject: isMathSubject(p.professional.primarySubject)
-          ? p.professional.primarySubject
-          : "Matematika",
-        additionalSubjects:
-          p.professional.additionalSubjects.filter(isMathSubject),
+        primarySubject: normalizeSubject(p.professional.primarySubject),
+        additionalSubjects: [
+          ...new Set(
+            p.professional.additionalSubjects
+              .filter(isSupportedSubject)
+              .map(normalizeSubject),
+          ),
+        ].filter((s) => s !== normalizeSubject(p.professional.primarySubject)),
       },
     }));
-  db.teacherClassAssignments = db.teacherClassAssignments.map((a) => ({
-    ...a,
-    archived: a.archived || !isMathSubject(a.subject),
-  }));
+  const active = new Map<string, (typeof db.teacherClassAssignments)[number]>();
+  const archived: typeof db.teacherClassAssignments = [];
+  db.teacherClassAssignments.forEach((a) => {
+    if (a.archived || !isSupportedSubject(a.subject)) {
+      archived.push({ ...a, archived: true });
+      return;
+    }
+    const value = { ...a, subject: normalizeSubject(a.subject) };
+    const key = value.teacherId + "|" + value.classId + "|" + value.subject;
+    const previous = active.get(key);
+    if (previous) previous.weeklyHours += value.weeklyHours;
+    else active.set(key, value);
+  });
+  db.teacherClassAssignments = [...active.values(), ...archived];
   const usable = new Set(
     db.teacherClassAssignments.filter((a) => !a.archived).map((a) => a.classId),
   );
@@ -173,14 +190,12 @@ export function upgradeDatabase(raw: unknown): Database {
     archived: c.archived || !usable.has(c.id),
     subject:
       db.teacherClassAssignments.find((a) => a.classId === c.id && !a.archived)
-        ?.subject || c.subject,
+        ?.subject || normalizeSubject(c.subject),
   }));
   db.events = db.events.filter((e) => !e.classId || usable.has(e.classId));
-  db.preferences.defaultSubject = isMathSubject(
+  db.preferences.defaultSubject = normalizeSubject(
     String(db.preferences.defaultSubject),
-  )
-    ? db.preferences.defaultSubject
-    : "Matematika";
+  );
   db.preferences.defaultClass = usable.has(String(db.preferences.defaultClass))
     ? db.preferences.defaultClass
     : db.classes.find((c) => !c.archived)?.id || "";

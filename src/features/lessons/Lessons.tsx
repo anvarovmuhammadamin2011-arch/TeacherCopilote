@@ -1,5 +1,6 @@
+import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -232,7 +233,8 @@ const schema = z.object({
   instructions: z.string(),
 });
 type Form = z.infer<typeof schema>;
-export function LessonCreate() {
+export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
+  const context = usePreparationContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [sections, setSections] = useState<LessonSection[] | null>(null);
@@ -247,22 +249,18 @@ export function LessonCreate() {
   } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: {
-      subject: "Matematika",
-      grade: "8",
-      topic: "",
+      subject: integrated ? context.subject : "Matematika",
+      grade: integrated ? context.grade : "8",
+      topic: integrated ? context.topic : "",
       duration: "45",
       level: "O‘rta",
       style: "Interaktiv",
-      language: "O‘zbek",
+      language: integrated ? context.language : "O‘zbek",
       instructions: "",
     },
   });
   const values = watch();
   const generate = async (data: Form) => {
-    if (data.language !== "O‘zbek") {
-      toast.info("Demo darslar hozircha o‘zbek tilida tayyorlanadi.");
-      return;
-    }
     setLoading(true);
     setSaved(false);
     try {
@@ -303,7 +301,7 @@ export function LessonCreate() {
       </Link>
       <PageHead
         eyebrow="AI VOSITALAR"
-        title="Matematika darsini rejalashtiring"
+        title="Dars rejasini tayyorlang"
         description="Mavzuni kiriting, namuna rejasini yarating va o‘zingizga moslang."
       />
       <DemoNote>
@@ -316,14 +314,14 @@ export function LessonCreate() {
           <p>Rejani ehtiyojlaringizga moslashtiring.</p>
           <form onSubmit={handleSubmit(generate)}>
             <div className="form-grid">
-              <Field label="Fan">
+              <Field label="Fan" hidden={integrated}>
                 <select {...register("subject")}>
                   {subjects.map((s) => (
                     <option key={s}>{s}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="Sinf">
+              <Field label="Sinf" hidden={integrated}>
                 <select {...register("grade")}>
                   {Array.from({ length: 11 }, (_, i) => (
                     <option value={i + 1} key={i}>
@@ -333,13 +331,18 @@ export function LessonCreate() {
                 </select>
               </Field>
             </div>
-            <Field label="Dars mavzusi" error={errors.topic?.message}>
+            <Field
+              label="Dars mavzusi"
+              hidden={integrated}
+              error={errors.topic?.message}
+            >
               <input
                 placeholder="Masalan, chiziqli tenglamalar"
                 {...register("topic")}
               />
             </Field>
             <MathTopicSuggestions
+              hidden={integrated}
               grade={values.grade}
               subject={values.subject}
               value={values.topic}
@@ -375,7 +378,7 @@ export function LessonCreate() {
                   ))}
                 </select>
               </Field>
-              <Field label="Til">
+              <Field label="Til" hidden={integrated}>
                 <select {...register("language")}>
                   <option>O‘zbek</option>
                   <option>Rus</option>
@@ -563,6 +566,16 @@ export function LessonDetails() {
   const { db, mutate } = useStore();
   const item = db.lessons.find((l) => l.id === id);
   const [draft, setDraft] = useState<Lesson | null>(null);
+  useEffect(() => {
+    if (item)
+      usePreparation
+        .getState()
+        .update({
+          subject: item.subject,
+          grade: item.grade,
+          topic: item.title,
+        });
+  }, [id]);
   if (!item)
     return (
       <Empty

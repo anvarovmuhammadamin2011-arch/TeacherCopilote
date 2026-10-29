@@ -9,14 +9,13 @@ import {
   HomeRedirect,
 } from "@/features/auth/Guards";
 import { Loading, Button } from "@/components/common";
+const PreparationHub = lazy(
+  () => import("@/features/workspace/PreparationHub"),
+);
+const ClassSchedule = lazy(() => import("@/features/workspace/ClassSchedule"));
 const Dashboard = lazy(() => import("@/features/dashboard/Dashboard"));
 const Lessons = lazy(() =>
   import("@/features/lessons/Lessons").then((m) => ({ default: m.Lessons })),
-);
-const LessonCreate = lazy(() =>
-  import("@/features/lessons/Lessons").then((m) => ({
-    default: m.LessonCreate,
-  })),
 );
 const LessonDetails = lazy(() =>
   import("@/features/lessons/Lessons").then((m) => ({
@@ -29,31 +28,19 @@ const Quizzes = lazy(() =>
 const QuizCreate = lazy(() =>
   import("@/features/quizzes/Quizzes").then((m) => ({ default: m.QuizCreate })),
 );
-const Classes = lazy(() =>
-  import("@/features/classes/Classes").then((m) => ({ default: m.Classes })),
-);
 const ClassDetails = lazy(() =>
   import("@/features/classes/Classes").then((m) => ({
     default: m.ClassDetails,
   })),
 );
-const Documents = lazy(() => import("@/features/documents/Documents"));
-const PDFAnalyzer = lazy(() => import("@/features/documents/PDFAnalyzer"));
-const Statistics = lazy(() => import("@/features/dashboard/Statistics"));
-const Calendar = lazy(() => import("@/features/calendar/Calendar"));
 const Materials = lazy(() => import("@/features/materials/Materials"));
-const Assistant = lazy(() => import("@/features/ai-assistant/Assistant"));
 const Profile = lazy(() =>
   import("@/features/account/Account").then((m) => ({ default: m.Profile })),
 );
 const Settings = lazy(() =>
   import("@/features/account/Account").then((m) => ({ default: m.Settings })),
 );
-const Notifications = lazy(() =>
-  import("@/features/account/Account").then((m) => ({
-    default: m.Notifications,
-  })),
-);
+const Documents = lazy(() => import("@/features/documents/Documents"));
 const Login = lazy(() =>
   import("@/features/auth/AuthPages").then((m) => ({ default: m.Login })),
 );
@@ -133,15 +120,38 @@ export default function App() {
                 />
                 <Route path="/teacher" element={<Layout />}>
                   <Route index element={<Dashboard />} />
+                  <Route path="prepare" element={<PreparationHub />} />
+                  <Route
+                    path="tasks"
+                    element={<PreparationHub section="tasks" />}
+                  />
+                  <Route
+                    path="exercises"
+                    element={
+                      <PreparationHub section="tasks" initialView="exercise" />
+                    }
+                  />
+                  <Route
+                    path="exercises/:id"
+                    element={<Documents kind="exercise" />}
+                  />
                   <Route path="lessons" element={<Lessons />} />
-                  <Route path="lessons/create" element={<LessonCreate />} />
+                  <Route
+                    path="lessons/create"
+                    element={<PreparationHub initialView="plan" />}
+                  />
                   <Route path="lessons/:id" element={<LessonDetails />} />
                   <Route path="quizzes" element={<Quizzes />} />
-                  <Route path="quizzes/create" element={<QuizCreate />} />
+                  <Route
+                    path="quizzes/create"
+                    element={
+                      <PreparationHub section="tasks" initialView="test" />
+                    }
+                  />
                   <Route path="quizzes/:id" element={<QuizCreate />} />
                   <Route
                     path="conspects"
-                    element={<Documents kind="conspect" />}
+                    element={<PreparationHub initialView="conspect" />}
                   />
                   <Route
                     path="conspects/:id"
@@ -149,22 +159,41 @@ export default function App() {
                   />
                   <Route
                     path="homework"
-                    element={<Documents kind="homework" />}
+                    element={
+                      <PreparationHub section="tasks" initialView="homework" />
+                    }
                   />
                   <Route
                     path="homework/:id"
                     element={<Documents kind="homework" />}
                   />
-                  <Route path="pdf-analyzer" element={<PDFAnalyzer />} />
-                  <Route path="classes" element={<Classes />} />
+                  <Route
+                    path="pdf-analyzer"
+                    element={<Navigate replace to="/teacher/materials" />}
+                  />
+                  <Route path="classes" element={<ClassSchedule />} />
                   <Route path="classes/:id" element={<ClassDetails />} />
-                  <Route path="calendar" element={<Calendar />} />
+                  <Route
+                    path="calendar"
+                    element={
+                      <Navigate replace to="/teacher/classes?view=schedule" />
+                    }
+                  />
                   <Route path="materials" element={<Materials />} />
-                  <Route path="ai-assistant" element={<Assistant />} />
-                  <Route path="statistics" element={<Statistics />} />
+                  <Route
+                    path="ai-assistant"
+                    element={<Navigate replace to="/teacher/prepare" />}
+                  />
+                  <Route
+                    path="statistics"
+                    element={<Navigate replace to="/teacher" />}
+                  />
                   <Route path="profile" element={<Profile />} />
                   <Route path="settings" element={<Settings />} />
-                  <Route path="notifications" element={<Notifications />} />
+                  <Route
+                    path="notifications"
+                    element={<Navigate replace to="/teacher" />}
+                  />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Route>

@@ -1,3 +1,4 @@
+import { recommendedEnglishTopics } from "@/features/english/curriculum";
 import { recommendedTopics } from "./curriculum";
 import "./mathematics.css";
 export default function MathTopicSuggestions({
@@ -5,13 +6,19 @@ export default function MathTopicSuggestions({
   subject,
   value,
   onSelect,
+  hidden = false,
 }: {
+  hidden?: boolean;
   grade: string;
   subject: string;
   value: string;
   onSelect: (s: string) => void;
 }) {
-  const topics = recommendedTopics(grade, subject);
+  if (hidden) return null;
+  const topics =
+    subject === "Ingliz tili"
+      ? recommendedEnglishTopics(grade)
+      : recommendedTopics(grade, subject);
   return (
     <div className="math-topic-suggestions">
       <span>{grade}-sinf uchun mavzu namunalari</span>
@@ -28,7 +35,7 @@ export default function MathTopicSuggestions({
         ))}
       </div>
       <small>
-        Erkin mavzu ham kiritishingiz mumkin. Hozir javoblar matematik
+        Erkin mavzu ham kiritishingiz mumkin. Hozir javoblar fan bo‘yicha
         shablonlardan tuziladi.
       </small>
     </div>

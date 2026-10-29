@@ -33,7 +33,7 @@ import {
   Modal,
   Confirm,
 } from "@/components/common";
-export default function Calendar() {
+export default function Calendar({ embedded = false }: { embedded?: boolean }) {
   const { db, mutate } = useStore();
   const [date, setDate] = useState(new Date(today() + "T12:00:00"));
   const [view, setView] = useState("Oy");
@@ -72,16 +72,26 @@ export default function Calendar() {
     );
   return (
     <>
-      <PageHead
-        title="Dars jadvali"
-        description="Vaqtingizni rejalashtiring, muhim ishlarni unutmang."
-        action={
+      {embedded ? (
+        <div className="embedded-page-toolbar">
+          <p>Dars, tayyorgarlik va shaxsiy eslatmalar.</p>
           <Button onClick={() => create(format(date, "yyyy-MM-dd"))}>
             <Plus size={16} />
             Tadbir qo‘shish
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHead
+          title="Dars jadvali"
+          description="Vaqtingizni rejalashtiring, muhim ishlarni unutmang."
+          action={
+            <Button onClick={() => create(format(date, "yyyy-MM-dd"))}>
+              <Plus size={16} />
+              Tadbir qo‘shish
+            </Button>
+          }
+        />
+      )}
       <Card className="calendar-card">
         <div className="calendar-toolbar">
           <div>

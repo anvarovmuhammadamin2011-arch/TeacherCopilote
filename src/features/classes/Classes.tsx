@@ -1,4 +1,7 @@
-import { mathSubjects, isMathSubject } from "@/features/mathematics/curriculum";
+import {
+  teachingSubjects,
+  isSupportedSubject,
+} from "@/features/workspace/subjects";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, CalendarDays, School } from "lucide-react";
@@ -23,7 +26,7 @@ import {
   SearchInput,
   Badge,
 } from "@/components/common";
-export function Classes() {
+export function Classes({ embedded = false }: { embedded?: boolean }) {
   const { db, mutate } = useStore();
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState<ClassRoom | null>(null);
@@ -62,16 +65,26 @@ export function Classes() {
   }
   return (
     <>
-      <PageHead
-        title="Sinflarim"
-        description="AI vositalari va dars jadvalingizni shaxsiylashtiring."
-        action={
+      {embedded ? (
+        <div className="embedded-page-toolbar">
+          <p>Sinflar, fanlar va haftalik dars soatlari.</p>
           <Button onClick={() => open()}>
             <Plus size={16} />
             Sinf qo‘shish
           </Button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHead
+          title="Sinflarim"
+          description="AI vositalari va dars jadvalingizni shaxsiylashtiring."
+          action={
+            <Button onClick={() => open()}>
+              <Plus size={16} />
+              Sinf qo‘shish
+            </Button>
+          }
+        />
+      )}
       <SearchInput value={search} onChange={setSearch} />
       <div className="resource-grid">
         {list.map((c) => (
@@ -156,7 +169,7 @@ export function Classes() {
                 !rows.length ||
                 rows.some(
                   (r) =>
-                    !isMathSubject(r.subject) ||
+                    !isSupportedSubject(r.subject) ||
                     r.weeklyHours < 1 ||
                     r.weeklyHours > 40,
                 ) ||
@@ -249,7 +262,7 @@ export function Classes() {
                       )
                     }
                   >
-                    {mathSubjects.map((s) => (
+                    {teachingSubjects.map((s) => (
                       <option key={s}>{s}</option>
                     ))}
                   </select>
@@ -292,7 +305,7 @@ export function Classes() {
                     ...rows,
                     {
                       subject:
-                        mathSubjects.find(
+                        teachingSubjects.find(
                           (s) => !rows.some((r) => r.subject === s),
                         ) || "Matematika",
                       weeklyHours: 1,

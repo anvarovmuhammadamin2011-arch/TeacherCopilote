@@ -1,3 +1,4 @@
+import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
 import { useState, useEffect } from "react";
 import {
@@ -149,7 +150,8 @@ const blank = (type = "Variantli"): Question => ({
     { left: "", right: "" },
   ],
 });
-export function QuizCreate() {
+export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
+  const context = usePreparationContext();
   const { id } = useParams();
   const [params] = useSearchParams();
   const { db, mutate } = useStore();
@@ -157,13 +159,22 @@ export function QuizCreate() {
   const navigate = useNavigate();
   const classes = teacherClasses(db);
   const [form, setForm] = useState({
-    subject: existing?.subject || db.teacher.subject,
-    grade: existing?.grade || String(classes[0]?.grade || 8),
-    classId: existing?.classId || classes[0]?.id || "",
-    topic: existing?.title || params.get("topic") || "",
+    subject:
+      existing?.subject || (integrated ? context.subject : db.teacher.subject),
+    grade:
+      existing?.grade ||
+      (integrated ? context.grade : String(classes[0]?.grade || 8)),
+    classId:
+      existing?.classId ||
+      (integrated ? context.classId : classes[0]?.id) ||
+      "",
+    topic:
+      existing?.title ||
+      params.get("topic") ||
+      (integrated ? context.topic : ""),
     count: existing?.questions.length || 7,
     difficulty: existing?.difficulty || "O‘rta",
-    language: existing?.language || "O‘zbek",
+    language: existing?.language || (integrated ? context.language : "O‘zbek"),
     time: existing?.time || 45,
     variants: existing?.variants?.length || 1,
   });
@@ -181,6 +192,16 @@ export function QuizCreate() {
   const [preview, setPreview] = useState(false);
   const [keys, setKeys] = useState(false);
   useEffect(() => {
+    if (existing)
+      usePreparation
+        .getState()
+        .update({
+          subject: existing.subject,
+          grade: existing.grade,
+          classId: existing.classId,
+          topic: existing.title,
+          language: existing.language || "O‘zbek",
+        });
     setTest(existing ? structuredClone(existing) : null);
     setActive(0);
     setPreview(false);
@@ -331,8 +352,8 @@ export function QuizCreate() {
   return (
     <>
       <PageHead
-        title="Matematik test generatori"
-        description="Misollar, tenglamalar va geometrik masalalar — 7 savol turida."
+        title="Test generatori"
+        description="Matematika va ingliz tili uchun 7 savol turida topshiriqlar."
         action={
           <Button asChild variant="outline">
             <Link to="/teacher/quizzes">Saqlangan testlar</Link>
@@ -353,7 +374,7 @@ export function QuizCreate() {
               void generate();
             }}
           >
-            <Field label="Fan">
+            <Field label="Fan" hidden={integrated}>
               <select
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
@@ -363,7 +384,7 @@ export function QuizCreate() {
                 ))}
               </select>
             </Field>
-            <Field label="Sinf">
+            <Field label="Sinf" hidden={integrated}>
               <select
                 value={form.classId || form.grade}
                 onChange={(e) => {
@@ -387,7 +408,7 @@ export function QuizCreate() {
                 ))}
               </select>
             </Field>
-            <Field label="Mavzu">
+            <Field label="Mavzu" hidden={integrated}>
               <input
                 required
                 minLength={3}
@@ -396,6 +417,7 @@ export function QuizCreate() {
               />
             </Field>
             <MathTopicSuggestions
+              hidden={integrated}
               grade={form.grade}
               subject={form.subject}
               value={form.topic}
@@ -438,7 +460,7 @@ export function QuizCreate() {
                 ))}
               </select>
             </Field>
-            <Field label="Til">
+            <Field label="Til" hidden={integrated}>
               <select
                 value={form.language}
                 onChange={(e) => setForm({ ...form, language: e.target.value })}

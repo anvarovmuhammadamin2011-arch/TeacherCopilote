@@ -164,9 +164,12 @@ export interface RegistrationDraft {
 }
 
 export interface TeachingDocument {
+  level?: string;
+  count?: number;
+  language?: string;
   id: string;
   title: string;
-  kind: "conspect" | "homework";
+  kind: "conspect" | "homework" | "exercise";
   subject: string;
   grade: string;
   date: string;

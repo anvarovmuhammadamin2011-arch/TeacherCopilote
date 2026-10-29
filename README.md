@@ -1,6 +1,6 @@
-# TeacherCopilot AI — Mathematics workspace
+# TeacherCopilot AI — Teacher preparation workspace
 
-Existing React 19 + Vite + strict TypeScript + TSX + Tailwind application, adapted exclusively to mathematics teachers. Uzbek Latin interface, white/soft blue design, responsive layouts and dark theme.
+An existing React 19 + Vite + strict TypeScript + TSX + Tailwind application, organized around a teacher preparing one topic. Uzbek Latin interface, white/soft blue styling, responsive layout and dark theme.
 
 ```bash
 npm ci
@@ -9,31 +9,39 @@ npm run check
 npm run build
 ```
 
-## Current scope
+## Five main sections
 
-- Registration and local registered-profile sign-in. The one-click demo login, its store action and seeded login accounts have been removed. Earlier sessions are invalidated once during this migration.
-- No paid plans, subscription routes, checkout, upgrade advertising or pricing badges. Tools and exports have no subscription gates.
-- Only Mathematics, Algebra and Geometry in registration, class assignments, profile, settings and AI generation forms. Language settings remain available.
-- Dashboard, classes with weekly hours, calendar, materials with folders/favorites, profile, settings and personal activity statistics.
-- Lesson plans with objectives, explanation, worked examples, practice, assessment, homework and conclusion.
-- Seven editable test question types, answer selection, matching pairs, reordering, regeneration, multiple variants, answer keys, saving, genuine DOCX export and print/PDF.
-- Mathematics conspects with rules, formulas, a worked example, mistakes to avoid and practice. Homework documents with matching step-by-step answer keys.
-- Mathematics chat gives clearly labeled worked examples from topic templates. PDF analyzer remains a file/request interface; it does not extract or analyze documents yet.
+1. **Bosh sahifa** — one shared topic, four quick creation actions, compact actual activity counts, recent materials and upcoming lessons.
+2. **Dars tayyorlash** — lesson plan and conspect tabs.
+3. **Topshiriqlar** — tests, exercises and homework, including editable answer keys.
+4. **Materiallarim** — saved and uploaded material cards, search, filters, folders, favorites, editing and exports.
+5. **Sinflar va jadval** — class/subject/weekly-hours management and month/week/day calendar tabs.
 
-## Mathematics templates
+Profile and settings are in the top profile menu. There is no subscription UI, demo login bypass, notifications entry, separate statistics page, general AI chat entry or PDF analysis entry. The PDF analyzer was only an interface, so it is deferred. Old links to deferred tools redirect to an appropriate main section. Existing saved-material URLs continue to work.
 
-`src/features/mathematics/curriculum.ts` provides 17 deterministic topic banks: natural-number operations, multiplication, fractions (addition/subtraction/multiplication), percentages, ratio/proportion, linear and quadratic equations, powers, rectangles, triangle angles, Pythagoras, linear functions, trigonometry, probability and derivatives. Recommendations use the selected grade and mathematical subject. Difficulty and variant change task parameters. Generated answer keys come from the same task objects as the questions. Symbols such as √, π, ² and fractions are Unicode/plain text for reliable editing and export.
+## Shared topic
 
-These are local mathematical templates, not a general symbolic algebra solver or live AI. Unsupported free-text topics use an explicitly labeled fallback template. Mock output is Uzbek; other language selections are metadata for future providers. Content must be reviewed for suitability for the actual class.
+`src/stores/usePreparation.ts` stores subject, class/grade, topic and instruction-language metadata per teacher profile. The same context is used on the home page and both preparation hubs. Teachers can choose a topic once and create a plan, conspect, test, exercise or homework from it. Editing context resets unsaved generated output for the previous context. Switching material tabs keeps the current generated outputs while the hub stays mounted. Saved documents reopen in their existing editors and seed the shared topic for the next creation action.
 
-`AIService` remains the provider interface. `MockAIService` is active. `BackendAIService` prepares future secure same-origin `/api/ai` requests for Groq/Qwen; no API secrets or live provider integration are in the browser.
+## Subjects and generators
 
-## Migration and data
+Only **Matematika** and **Ingliz tili** appear as top-level subject choices. Algebra and geometry are covered by the mathematics topic templates.
 
-The v5 migration retains mathematics resources and archives previous other-subject lessons, tests, documents and materials under `db.legacyArchive`, without deleting them. Non-mathematics class assignments are archived and excluded from the active teacher workspace. Teacher profiles are restricted to mathematical subjects. Earlier v1–v3 student data remains excluded by the teacher-only migration. Previous registration drafts are reset to mathematics defaults; passwords and salary are never persisted.
+- Mathematics: 17 deterministic topic banks for operations, fractions, percentages, ratio, equations, powers, geometry, functions, trigonometry, probability and derivatives, with worked examples and matching answer keys.
+- English: 10 topic banks for Present Simple, to be, Present Continuous, Past Simple, Future Simple, articles, prepositions, comparatives, can/cannot and daily-routine vocabulary. English examples include Uzbek explanations and separate answer keys.
+- Tests retain seven editable question types, option selection, matching pairs, add/delete/reorder/regenerate, multiple variants, preview, answer keys, real DOCX export and print/PDF.
+- Exercises are saved as a distinct document kind, alongside homework and conspects.
 
-## Current limitations
+These are clearly labeled local templates, not live generative AI. Free-text topics without a matching template use a labeled fallback. The actual class and learning objectives still need teacher review. Instruction-language selectors are metadata for future providers; current instructions are Uzbek with English examples where relevant.
 
-This is a frontend prototype, not secure production authentication. Local sign-in only locates a previously registered profile. Passwords are validated transiently at registration, but never stored, transmitted or verified at sign-in. A secure backend is still needed for identity, account recovery, authorization and durable multi-user data. Optional salary stays only in form/component memory and is excluded from storage, AI input and exports.
+`AIService` remains the provider boundary. `MockAIService` is active. `BackendAIService` prepares secure same-origin `/api/ai` integration for a future Groq/Qwen backend. No provider secrets are in the client.
 
-Uploads retain metadata only. PDF export uses the browser print dialog's Save as PDF option. Browser-local records are not a secure multi-tenant database. No real payments, subscriptions or student accounts exist.
+## Data and migration
+
+The v6 migration restores English materials from the earlier other-subject archive, normalizes algebra/geometry under Mathematics, combines equivalent active class-subject assignments and preserves other-subject materials in `db.legacyArchive`. Existing mathematics documents remain intact. Student accounts, rosters, submissions, grades and attendance are absent. Old registration drafts reset to the two-subject configuration. Shared context stores no password or salary data.
+
+## Current limits
+
+This is a frontend prototype. Registered-profile sign-in is local; passwords are validated transiently at registration but are not stored, transmitted or verified at sign-in. Secure identity, recovery, access control and multi-user persistence require a backend. Optional salary stays in component/form memory only and is excluded from saved data, AI input and exports.
+
+Uploads retain metadata, not original files. PDF export uses the browser print dialog's Save as PDF option. Clearing the workspace preserves the teacher profile and archived materials. There are no paid plans, real payments or student-facing features.

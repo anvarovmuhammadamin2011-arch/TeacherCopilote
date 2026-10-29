@@ -1,3 +1,4 @@
+import { documentPath } from "@/features/workspace/subjects";
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -60,12 +61,14 @@ export default function Materials() {
     ...db.documents.map((x) => ({
       id: x.id,
       title: x.title,
-      category: x.kind === "homework" ? "Uy vazifalari" : "Konspektlar",
+      category:
+        x.kind === "conspect"
+          ? "Konspektlar"
+          : x.kind === "exercise"
+            ? "Mashqlar"
+            : "Uy vazifalari",
       date: x.date,
-      href:
-        "/teacher/" +
-        (x.kind === "homework" ? "homework/" : "conspects/") +
-        x.id,
+      href: "/teacher/" + (documentPath(x.kind) + "/") + x.id,
     })),
   ].map((x) => ({
     ...x,
@@ -102,7 +105,7 @@ export default function Materials() {
     <>
       <PageHead
         title="Materiallarim"
-        description="Matematik darslar, testlar, konspektlar va masalalar to‘plami."
+        description="Dars rejalari, konspektlar va barcha topshiriqlaringiz bir joyda."
         action={
           <Button onClick={() => setUpload(true)}>
             <Upload size={16} />
@@ -221,7 +224,9 @@ export default function Materials() {
                     else if (m.category === "Testlar")
                       d.quizzes = d.quizzes.filter((x) => x.id !== m.id);
                     else if (
-                      ["Konspektlar", "Uy vazifalari"].includes(m.category)
+                      ["Konspektlar", "Uy vazifalari", "Mashqlar"].includes(
+                        m.category,
+                      )
                     )
                       d.documents = d.documents.filter((x) => x.id !== m.id);
                     else d.materials = d.materials.filter((x) => x.id !== m.id);

@@ -8,7 +8,7 @@ export const mockRepository = {
   getLessons: () => delay(useStore.getState().db.lessons),
   createLesson: async (l: Lesson) => {
     useStore.getState().mutate((d) => d.lessons.unshift(l));
-    return delay(l);
+    return l;
   },
   updateLesson: async (l: Lesson) => {
     useStore.getState().mutate((d) => {

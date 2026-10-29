@@ -12,7 +12,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <GraduationCap size={32} /> TeacherCopilot AI
         </Link>
         <div className="auth-art-content">
-          <span className="eyebrow">MATEMATIKA USTOZLARI UCHUN</span>
+          <span className="eyebrow">
+            MATEMATIKA VA INGLIZ TILI USTOZLARI UCHUN
+          </span>
           <h1>
             G‘oyadan
             <br />
@@ -27,7 +29,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             <Sparkles size={42} />
           </div>
         </div>
-        <small>Matematika, algebra va geometriya uchun ish maydoni</small>
+        <small>Matematika va ingliz tili uchun ish maydoni</small>
       </aside>
       <main className="auth-main">
         <div className="auth-form-wrap">{children}</div>
@@ -43,7 +45,7 @@ export function Login() {
   return (
     <AuthShell>
       <h1>Xush kelibsiz, ustoz</h1>
-      <p>Matematika ustozining shaxsiy ish maydoniga kiring.</p>
+      <p>O‘qituvchining shaxsiy ish maydoniga kiring.</p>
       <DemoNote>
         Mahalliy prototip: faqat avval ro‘yxatdan o‘tgan profil ochiladi.
         Xavfsiz server autentifikatsiyasi hali ulanmagan; parol tekshirilmaydi

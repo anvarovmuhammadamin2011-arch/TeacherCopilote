@@ -185,7 +185,7 @@ export function Profile() {
               {profile.firstName} {profile.lastName}
             </h2>
             <p>{profile.subject} o‘qituvchisi</p>
-            <Badge>Matematika o‘qituvchisi</Badge>
+            <Badge>O‘qituvchi ish maydoni</Badge>
           </div>
           <div className="progress-label">
             <span>Profil to‘ldirilgan</span>
@@ -239,7 +239,7 @@ export function Profile() {
                         setProfile({ ...profile, subject: e.target.value })
                       }
                     >
-                      {["Matematika", "Algebra", "Geometriya"].map((s) => (
+                      {["Matematika", "Ingliz tili"].map((s) => (
                         <option key={s}>{s}</option>
                       ))}
                     </select>
@@ -325,14 +325,7 @@ export function Settings() {
         description="Ish maydoningizni o‘zingizga moslang."
       />
       <div className="tabs">
-        {[
-          "Umumiy",
-          "Ko‘rinish",
-          "Bildirishnomalar",
-          "Til",
-          "Maxfiylik",
-          "Hisob",
-        ].map((t) => (
+        {["Umumiy", "Ko‘rinish", "Til", "Maxfiylik", "Hisob"].map((t) => (
           <button
             key={t}
             className={tab === t ? "active" : ""}
@@ -354,7 +347,7 @@ export function Settings() {
                   )}
                   onChange={(e) => preference("defaultSubject", e.target.value)}
                 >
-                  {["Matematika", "Algebra", "Geometriya"].map((x) => (
+                  {["Matematika", "Ingliz tili"].map((x) => (
                     <option key={x}>{x}</option>
                   ))}
                 </select>

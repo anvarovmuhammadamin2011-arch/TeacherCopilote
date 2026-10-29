@@ -16,7 +16,7 @@ export const useRegistration = create<State>()(
     }),
     {
       name: "teachercopilot-registration-draft-v1",
-      version: 3,
+      version: 4,
       migrate: () => ({ draft: emptyDraft() }),
       partialize: (s) => ({
         draft: {

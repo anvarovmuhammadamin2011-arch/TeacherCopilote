@@ -24,7 +24,7 @@ const storage = createJSONStorage<Pick<Store, "db">>(() => ({
           const db = upgradeDatabase(JSON.parse(value).state.db);
           localStorage.setItem(
             key,
-            JSON.stringify({ state: { db }, version: 5 }),
+            JSON.stringify({ state: { db }, version: 6 }),
           );
           retired.forEach((k) => localStorage.removeItem(k));
           return localStorage.getItem(key);
@@ -68,7 +68,7 @@ export const useStore = create<Store>()(
     }),
     {
       name: "teachercopilot-teacher-v4",
-      version: 5,
+      version: 6,
       storage,
       partialize: (s) => ({ db: s.db }),
       migrate: (s) => ({ db: upgradeDatabase((s as Store).db) }),
