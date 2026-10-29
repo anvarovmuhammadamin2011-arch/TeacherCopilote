@@ -1,0 +1,59 @@
+.math-topic-suggestions {
+  margin: 4px 0 19px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 9px;
+}
+.math-topic-suggestions > span {
+  font-size: 10px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 8px;
+}
+.math-topic-suggestions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.math-topic-suggestions button {
+  font-size: 9px;
+  line-height: 1.6;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  text-align: left;
+}
+.math-topic-suggestions button:hover,
+.math-topic-suggestions button[aria-pressed="true"] {
+  background: var(--light);
+  border-color: #a9c8f2;
+  color: var(--primary);
+}
+.math-topic-suggestions small {
+  font-size: 8px;
+  color: var(--muted);
+  line-height: 1.8;
+  display: block;
+  margin-top: 9px;
+}
+.math-workspace-note {
+  margin-top: 15px;
+  border: 1px solid var(--border);
+  background: var(--light);
+  padding: 15px;
+  border-radius: 12px;
+}
+.math-workspace-note b {
+  display: block;
+  font-size: 12px;
+  color: var(--heading);
+}
+.math-workspace-note p {
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 5px 0 0;
+  color: var(--muted);
+}
