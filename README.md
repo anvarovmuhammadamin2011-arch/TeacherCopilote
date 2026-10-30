@@ -1,6 +1,6 @@
-# TeacherCopilot AI — Teacher preparation workspace
+# TeacherCopilot AI — Matematika ustozining ish maydoni
 
-An existing React 19 + Vite + strict TypeScript + TSX + Tailwind application, organized around a teacher preparing one topic. Uzbek Latin interface, white/soft blue styling, responsive layout and dark theme.
+React 19, Vite, strict TypeScript, TSX and Tailwind CSS. Existing teacher tools are retained in a mathematics-only, Uzbek Latin workspace.
 
 ```bash
 npm ci
@@ -9,39 +9,46 @@ npm run check
 npm run build
 ```
 
-## Five main sections
+## Five sections
 
-1. **Bosh sahifa** — one shared topic, four quick creation actions, compact actual activity counts, recent materials and upcoming lessons.
-2. **Dars tayyorlash** — lesson plan and conspect tabs.
-3. **Topshiriqlar** — tests, exercises and homework, including editable answer keys.
-4. **Materiallarim** — saved and uploaded material cards, search, filters, folders, favorites, editing and exports.
-5. **Sinflar va jadval** — class/subject/weekly-hours management and month/week/day calendar tabs.
+- **Bosh sahifa**: quick creation, recent materials, upcoming lessons and compact actual resource counts.
+- **Dars tayyorlash**: lesson plans, structured conspects, explanations and worked examples.
+- **Topshiriqlar**: tests, assessment papers, exercises and homework, including answer keys.
+- **Materiallarim**: search, categories, folders, favorites and links to editable saved resources.
+- **Sinflarim**: class names, current topic, weekly hours and the lesson calendar. No student accounts or rosters.
 
-Profile and settings are in the top profile menu. There is no subscription UI, demo login bypass, notifications entry, separate statistics page, general AI chat entry or PDF analysis entry. The PDF analyzer was only an interface, so it is deferred. Old links to deferred tools redirect to an appropriate main section. Existing saved-material URLs continue to work.
+Profile and settings are in the top profile menu. No paid plans, subscription gates, quick demo login, notifications, standalone statistics, standalone AI chat or PDF analyzer menus.
 
-## Shared topic
+## Prepare a topic once
 
-`src/stores/usePreparation.ts` stores subject, class/grade, topic and instruction-language metadata per teacher profile. The same context is used on the home page and both preparation hubs. Teachers can choose a topic once and create a plan, conspect, test, exercise or homework from it. Editing context resets unsaved generated output for the previous context. Switching material tabs keeps the current generated outputs while the hub stays mounted. Saved documents reopen in their existing editors and seed the shared topic for the next creation action.
+`usePreparation` stores per-teacher class, mathematics direction, topic, difficulty, task/variant counts, answer format and duration. Mathematics is automatic; directions are Mathematics, Algebra and Geometry. The settings pass between the dashboard, lesson and assignment hubs. Switching material tabs retains draft output while the hub remains mounted. Changing shared settings starts fresh drafts; saving/navigating away can unmount other unsaved outputs.
 
-## Subjects and generators
+The shared form offers Oson, O‘rta, Murakkab and Aralash difficulty, 1–30 tasks, 1–4 variants, answer-only or step-by-step teacher keys, and an optional teacher note/textbook page. Notes are explicitly included as teacher notes, not interpreted as free-form AI instructions. Conspects contain one worked example plus the selected number of practice tasks; variant count applies to assignments, not conspects or lesson plans.
 
-Only **Matematika** and **Ingliz tili** appear as top-level subject choices. Algebra and geometry are covered by the mathematics topic templates.
+## Mathematics generation
 
-- Mathematics: 17 deterministic topic banks for operations, fractions, percentages, ratio, equations, powers, geometry, functions, trigonometry, probability and derivatives, with worked examples and matching answer keys.
-- English: 10 topic banks for Present Simple, to be, Present Continuous, Past Simple, Future Simple, articles, prepositions, comparatives, can/cannot and daily-routine vocabulary. English examples include Uzbek explanations and separate answer keys.
-- Tests retain seven editable question types, option selection, matching pairs, add/delete/reorder/regenerate, multiple variants, preview, answer keys, real DOCX export and print/PDF.
-- Exercises are saved as a distinct document kind, alongside homework and conspects.
+`src/features/mathematics/curriculum.ts` contains 17 deterministic topic banks. Tasks are concrete problems with computed answers and solution steps. Difficulty changes linear-equation structure (one side, both sides, brackets) and fraction denominators; it also changes numeric parameters. Mixed difficulty cycles the levels. Questions are unique within a generated variant. Unknown topics are rejected with a visible message, rather than silently returning unrelated content.
 
-These are clearly labeled local templates, not live generative AI. Free-text topics without a matching template use a labeled fallback. The actual class and learning objectives still need teacher review. Instruction-language selectors are metadata for future providers; current instructions are Uzbek with English examples where relevant.
+The seven editable question types, question/option editing, correct-answer selection, ordering, regeneration, previews, multiple variants and saving remain supported. Assessment papers use open numerical answers by default. Teacher solutions can be edited after changing a question; teachers should check their correspondence after manual edits.
 
-`AIService` remains the provider boundary. `MockAIService` is active. `BackendAIService` prepares secure same-origin `/api/ai` integration for a future Groq/Qwen backend. No provider secrets are in the client.
+Material-local **Tushuntir**, **Osonlashtir**, and **O‘xshash misol yarat** actions create topic-based template examples and allow appending them to the material. They do not analyze arbitrary edited problems. Generated student content and teacher answers are stored separately; the export buttons always produce a separate student sheet and teacher key. Showing teacher keys in the editor does not add them to the student export.
 
-## Data and migration
+These are mathematical templates, not live AI or a general symbolic solver. `AIService` and `BackendAIService` retain the future secure same-origin Groq/Qwen provider boundary. No provider credentials are in frontend code.
 
-The v6 migration restores English materials from the earlier other-subject archive, normalizes algebra/geometry under Mathematics, combines equivalent active class-subject assignments and preserves other-subject materials in `db.legacyArchive`. Existing mathematics documents remain intact. Student accounts, rosters, submissions, grades and attendance are absent. Old registration drafts reset to the two-subject configuration. Shared context stores no password or salary data.
+## Sources and exports
 
-## Current limits
+**Manba yuklash** inside preparation reads a selected page of a text-based PDF with a bundled PDF.js worker, or reads TXT, up to 10 MB. It previews text and offers recognized mathematics topics for explicit selection. Files remain in component memory, are not uploaded or persisted, and are released when leaving the view. Scanned-image OCR and general AI document analysis are not implemented; PDF formulas should be checked against the original page.
 
-This is a frontend prototype. Registered-profile sign-in is local; passwords are validated transiently at registration but are not stored, transmitted or verified at sign-in. Secure identity, recovery, access control and multi-user persistence require a backend. Optional salary stays in component/form memory only and is excluded from saved data, AI input and exports.
+Word exports are genuine editable OOXML `.docx` files. Formulas use Unicode/plain-text notation (√, ², π, α, fractions and exponent notation), not native Word equation objects. Separate variants have explicit page breaks. PDF uses the browser print dialog's Save as PDF. Escaped printable markup excludes app navigation and private profile data.
 
-Uploads retain metadata, not original files. PDF export uses the browser print dialog's Save as PDF option. Clearing the workspace preserves the teacher profile and archived materials. There are no paid plans, real payments or student-facing features.
+## Data and authentication
+
+The v7 migration preserves unsupported-subject resources in `legacyArchive`, archives their class assignments, and limits active profiles to Mathematics. Existing mathematical resources, classes and schedules remain usable. Previous English preparation state and registration drafts are reset. No student data is introduced.
+
+This remains a browser-local prototype. Registration creates a local profile; sign-in locates that profile. Passwords are never stored or checked at login, and the UI discloses this limitation. Secure backend authentication, durable multi-user data, account recovery and authorization are still required before real production use. Optional salary is excluded from persistence and exports. Uploaded material metadata is not a substitute for cloud file storage.
+
+## Verification
+
+For the mathematics-only revision, checks cover 8,160 independently calculated answers (17 banks × 4 difficulty modes × 4 variants × 30 tasks), all seven question types for every bank, separate exports, two variants of five exercises, answer-only/steps behavior, exact lesson durations, and preservation during migration. React DOM integration verifies navigation, shared topic, generation, tab retention, assessment saving and the simplify/append action. Word and print-template PDF output are rendered and checked for mathematical symbols and answer separation.
+
+The local managed preview service was unavailable during this revision. Browser visual/responsive checks and a real classroom trial with the mathematics teacher remain to be completed; DOM tests do not establish browser layout quality.

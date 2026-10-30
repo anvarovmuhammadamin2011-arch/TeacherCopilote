@@ -1,28 +1,37 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useStore } from "./useStore";
-import { normalizeSubject } from "@/features/workspace/subjects";
+import { mathDirections } from "@/features/workspace/subjects";
 export interface PreparationContext {
   subject: string;
   grade: string;
   classId: string;
   topic: string;
   language: string;
+  level: string;
+  count: number;
+  variants: number;
+  answerFormat: "answer" | "steps";
+  duration: number;
+  instructions: string;
 }
+export const preparationDefaults: PreparationContext = {
+  subject: "Matematika",
+  grade: "8",
+  classId: "",
+  topic: "",
+  language: "O‘zbek",
+  level: "O‘rta",
+  count: 5,
+  variants: 1,
+  answerFormat: "steps",
+  duration: 45,
+  instructions: "",
+};
 interface State {
   contexts: Record<string, PreparationContext>;
   update: (patch: Partial<PreparationContext>) => void;
 }
-const defaultContext = (): PreparationContext => {
-  const db = useStore.getState().db;
-  return {
-    subject: normalizeSubject(db.teacher.subject),
-    grade: "8",
-    classId: "",
-    topic: "",
-    language: "O‘zbek",
-  };
-};
 export const usePreparation = create<State>()(
   persist(
     (set) => ({
@@ -32,28 +41,34 @@ export const usePreparation = create<State>()(
         set((s) => ({
           contexts: {
             ...s.contexts,
-            [key]: { ...(s.contexts[key] || defaultContext()), ...patch },
+            [key]: { ...preparationDefaults, ...s.contexts[key], ...patch },
           },
         }));
       },
     }),
     {
       name: "teachercopilot-preparation-v1",
+      version: 2,
       partialize: (s) => ({ contexts: s.contexts }),
+      migrate: (raw) => ({
+        contexts: Object.fromEntries(
+          Object.entries((raw as State)?.contexts || {}).map(([id, c]) => [
+            id,
+            {
+              ...preparationDefaults,
+              ...c,
+              subject: mathDirections.includes(c.subject)
+                ? c.subject
+                : "Matematika",
+              topic: mathDirections.includes(c.subject) ? c.topic : "",
+            },
+          ]),
+        ),
+      }),
     },
   ),
 );
 export function usePreparationContext() {
   const id = useStore((s) => s.db.teacher.id || "local");
-  const teacherSubject = useStore((s) => s.db.teacher.subject);
-  const context = usePreparation((s) => s.contexts[id]);
-  return (
-    context || {
-      subject: normalizeSubject(teacherSubject),
-      grade: "8",
-      classId: "",
-      topic: "",
-      language: "O‘zbek",
-    }
-  );
+  return usePreparation((s) => s.contexts[id]) || preparationDefaults;
 }

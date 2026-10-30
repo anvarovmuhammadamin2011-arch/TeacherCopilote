@@ -39,6 +39,7 @@ export default function PreparationHub({
         ]
       : [
           { id: "test", label: "Test", icon: ClipboardList },
+          { id: "assessment", label: "Nazorat ishi", icon: ClipboardList },
           { id: "exercise", label: "Mashq", icon: PenLine },
           { id: "homework", label: "Uy vazifasi", icon: NotebookPen },
         ];
@@ -55,7 +56,7 @@ export default function PreparationHub({
         description={
           section === "prepare"
             ? "Bir mavzu asosida dars rejasi va tushuntirish tayyorlang."
-            : "Test, mustaqil mashq va uy vazifasini bir joyda yarating."
+            : "Mashq, test, nazorat ishi va uy vazifasi — aniq misollar va alohida javoblar."
         }
         action={
           <Link
@@ -67,7 +68,7 @@ export default function PreparationHub({
           </Link>
         }
       />
-      <TopicBar />
+      <TopicBar full />
       <div className="workspace-tabs" role="group" aria-label="Material turi">
         {views.map((v) => (
           <button
@@ -82,7 +83,8 @@ export default function PreparationHub({
       </div>
       <p className="workspace-mock-note">
         Namuna generatori: hozir mahalliy shablonlardan foydalaniladi. Natijani
-        tekshiring, tahrirlang va saqlang.
+        tekshiring, tahrirlang va saqlang. Sozlamani o‘zgartirish yangi
+        qoralamani boshlaydi.
       </p>
       <div className="integrated-tool" key={JSON.stringify(context)}>
         {context.topic.trim().length < 3 ? (
@@ -102,6 +104,9 @@ export default function PreparationHub({
               </div>
               <div hidden={view !== "test"}>
                 <QuizCreate integrated />
+              </div>
+              <div hidden={view !== "assessment"}>
+                <QuizCreate integrated assessment />
               </div>
               <div hidden={view !== "exercise"}>
                 <Documents kind="exercise" integrated />

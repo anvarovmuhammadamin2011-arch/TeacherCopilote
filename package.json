@@ -21,6 +21,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.0",
     "lucide-react": "^0.468.0",
+    "pdfjs-dist": "^5.4.296",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.65.0",

@@ -14,6 +14,7 @@ export interface Lesson {
   sections: LessonSection[];
 }
 export interface ClassRoom {
+  currentTopic?: string;
   id: string;
   name: string;
   subject: string;
@@ -25,6 +26,7 @@ export interface ClassRoom {
   archived?: boolean;
 }
 export interface Question {
+  solution?: string;
   id: string;
   text: string;
   type: string;
@@ -36,6 +38,8 @@ export interface Question {
   pairs?: { left: string; right: string }[];
 }
 export interface Quiz {
+  kind?: "test" | "assessment";
+  answerFormat?: "answer" | "steps";
   id: string;
   title: string;
   subject: string;
@@ -164,6 +168,8 @@ export interface RegistrationDraft {
 }
 
 export interface TeachingDocument {
+  answerFormat?: "answer" | "steps";
+  variants?: number;
   level?: string;
   count?: number;
   language?: string;

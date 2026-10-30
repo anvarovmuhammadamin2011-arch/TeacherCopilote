@@ -1,4 +1,3 @@
-import { recommendedEnglishTopics } from "@/features/english/curriculum";
 import { recommendedTopics } from "./curriculum";
 import "./mathematics.css";
 export default function MathTopicSuggestions({
@@ -15,10 +14,7 @@ export default function MathTopicSuggestions({
   onSelect: (s: string) => void;
 }) {
   if (hidden) return null;
-  const topics =
-    subject === "Ingliz tili"
-      ? recommendedEnglishTopics(grade)
-      : recommendedTopics(grade, subject);
+  const topics = recommendedTopics(grade, subject);
   return (
     <div className="math-topic-suggestions">
       <span>{grade}-sinf uchun mavzu namunalari</span>

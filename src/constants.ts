@@ -13,7 +13,7 @@ export const navigation = [
       { name: "Dars tayyorlash", path: "prepare", icon: BookOpen },
       { name: "Topshiriqlar", path: "tasks", icon: ClipboardList },
       { name: "Materiallarim", path: "materials", icon: FolderOpen },
-      { name: "Sinflar va jadval", path: "classes", icon: CalendarDays },
+      { name: "Sinflarim", path: "classes", icon: CalendarDays },
     ],
   },
 ];

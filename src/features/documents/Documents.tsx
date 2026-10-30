@@ -1,3 +1,5 @@
+import MaterialActions from "@/features/mathematics/MaterialActions";
+import SeparateExports from "@/features/mathematics/SeparateExports";
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import { documentPath } from "@/features/workspace/subjects";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
@@ -6,8 +8,6 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   Sparkles,
   Save,
-  Printer,
-  FileDown,
   BookOpen,
   NotebookPen,
   FileText,
@@ -26,7 +26,6 @@ import { aiService } from "@/services/ai/service";
 import { teacherClasses } from "@/services/api/onboardingRepository";
 import { subjects } from "@/data/seed";
 import { uid, today, dateLabel } from "@/utils/cn";
-import { exportWord, printDocument } from "@/utils/export";
 import type { TeachingDocument } from "@/types";
 import { PageHead, Card, Button, Field, Empty } from "@/components/common";
 import "./documents.css";
@@ -52,9 +51,13 @@ export default function Documents({
     grade:
       existing?.grade ||
       (integrated ? context.grade : String(teacherClasses(db)[0]?.grade || 8)),
-    level: existing?.level || "O‘rta",
-    count: existing?.count || 5,
+    level: existing?.level || (integrated ? context.level : "O‘rta"),
+    count: existing?.count || (integrated ? context.count : 5),
     language: existing?.language || (integrated ? context.language : "O‘zbek"),
+    variants: existing?.variants || (integrated ? context.variants : 1),
+    answerFormat:
+      existing?.answerFormat ||
+      (integrated ? context.answerFormat : ("steps" as const)),
   });
   const [busy, setBusy] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -79,7 +82,13 @@ export default function Documents({
         (integrated
           ? context.grade
           : String(teacherClasses(db)[0]?.grade || 8)),
-      level: existing?.level || "O‘rta",
+      level: existing?.level || (integrated ? context.level : "O‘rta"),
+      count: existing?.count || (integrated ? context.count : 5),
+      variants: existing?.variants || (integrated ? context.variants : 1),
+      answerFormat:
+        existing?.answerFormat || (integrated ? context.answerFormat : "steps"),
+      language:
+        existing?.language || (integrated ? context.language : "O‘zbek"),
     }));
     setShowKey(false);
     setEditing(false);
@@ -96,12 +105,6 @@ export default function Documents({
   const stored = db.documents.find((d) => d.id === document?.id);
   const isSaved =
     !!document && JSON.stringify(stored) === JSON.stringify(document);
-  const text = document
-    ? document.content +
-      (showKey && document.answerKey
-        ? "\n\nJAVOB KALITI\n" + document.answerKey
-        : "")
-    : "";
   function save() {
     if (!document?.title.trim() || !document.content.trim()) {
       toast.error("Nom va matnni kiriting.");
@@ -157,7 +160,7 @@ export default function Documents({
                 setBusy(true);
                 try {
                   const result = await aiService.generateDocument(
-                    { ...form, duration: 45 },
+                    { ...form, duration: 45, ...(integrated ? context : {}) },
                     kind === "conspect" ? "conspect" : "homework",
                   );
                   setDocument({
@@ -170,11 +173,17 @@ export default function Documents({
                     level: form.level,
                     count: form.count,
                     language: form.language,
+                    variants: form.variants,
+                    answerFormat: form.answerFormat,
                     ...result,
                   });
                   setEditing(false);
-                } catch {
-                  toast.error("Hujjat yaratilmadi.");
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Hujjat yaratilmadi.",
+                  );
                 } finally {
                   setBusy(false);
                 }
@@ -207,11 +216,9 @@ export default function Documents({
                         setForm({ ...form, subject: e.target.value })
                       }
                     >
-                      {[...new Set([db.teacher.subject, ...subjects])].map(
-                        (s) => (
-                          <option key={s}>{s}</option>
-                        ),
-                      )}
+                      {subjects.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
                     </select>
                   </Field>
                   <Field label="Sinf" hidden={integrated}>
@@ -239,12 +246,9 @@ export default function Documents({
                 <div className="studio-form-section">
                   <span>02</span>Natijani moslashtiring
                 </div>
-                <Field label={isConspect ? "Batafsillik darajasi" : "Qiyinlik"}>
+                <Field label="Qiyinlik" hidden={integrated}>
                   <div className="studio-choices">
-                    {(isConspect
-                      ? ["Qisqa", "O‘rta", "Batafsil"]
-                      : ["Oson", "O‘rta", "Qiyin"]
-                    ).map((level) => (
+                    {["Oson", "O‘rta", "Murakkab", "Aralash"].map((level) => (
                       <button
                         type="button"
                         key={level}
@@ -258,7 +262,7 @@ export default function Documents({
                 </Field>
                 <div className={isConspect ? "" : "studio-field-pair"}>
                   {!isConspect && (
-                    <Field label="Mashqlar soni">
+                    <Field label="Mashqlar soni" hidden={integrated}>
                       <input
                         type="number"
                         required
@@ -284,6 +288,35 @@ export default function Documents({
                     </select>
                   </Field>
                 </div>
+                {!integrated && (
+                  <>
+                    <Field label="Variantlar soni">
+                      <input
+                        type="number"
+                        min={1}
+                        max={4}
+                        value={form.variants}
+                        onChange={(e) =>
+                          setForm({ ...form, variants: Number(e.target.value) })
+                        }
+                      />
+                    </Field>
+                    <Field label="Ustoz javoblari">
+                      <select
+                        value={form.answerFormat}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            answerFormat: e.target.value as "answer" | "steps",
+                          })
+                        }
+                      >
+                        <option value="answer">Faqat javob</option>
+                        <option value="steps">Bosqichma-bosqich yechim</option>
+                      </select>
+                    </Field>
+                  </>
+                )}
                 <Button disabled={busy} className="studio-generate">
                   <Sparkles size={17} className={busy ? "spin" : ""} />
                   {busy ? "Tayyorlanmoqda…" : "Namuna yaratish"}
@@ -377,25 +410,14 @@ export default function Documents({
                   Tahrirlash
                 </button>
               </div>
-              <div className="studio-export-actions">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => printDocument(document.title, text)}
-                >
-                  <Printer size={15} />
-                  PDF / Chop etish
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => exportWord(document.title, text)}
-                >
-                  <FileDown size={15} />
-                  Word
-                </Button>
-              </div>
             </div>
+          )}
+          {document && !busy && (
+            <SeparateExports
+              title={document.title}
+              content={document.content}
+              answerKey={document.answerKey}
+            />
           )}
           <div className={"studio-canvas " + (!document ? "is-empty" : "")}>
             {busy ? (
@@ -478,7 +500,7 @@ export default function Documents({
                     <span>{dateLabel(document.date)}</span>
                   </footer>
                 </article>
-                {!isConspect && (
+                {!!document.answerKey && (
                   <div className="studio-answer-panel">
                     <label>
                       <span className="studio-answer-icon">
@@ -486,13 +508,13 @@ export default function Documents({
                       </span>
                       <span>
                         <b>Javob kaliti</b>
-                        <small>Ko‘rsatish va eksportga qo‘shish</small>
+                        <small>Faqat ustozga ko‘rinadi</small>
                       </span>
                       <input
                         type="checkbox"
                         checked={showKey}
                         onChange={(e) => setShowKey(e.target.checked)}
-                        aria-label="Javob kalitini ko‘rsatish va eksportga qo‘shish"
+                        aria-label="Javob kalitini ko‘rsatish"
                       />
                     </label>
                     {showKey && (
@@ -567,6 +589,22 @@ export default function Documents({
               </div>
             )}
           </div>
+          {document && !busy && (
+            <MaterialActions
+              topic={document.title}
+              subject={document.subject}
+              grade={document.grade}
+              onApply={(r) =>
+                setDocument({
+                  ...document,
+                  content:
+                    document.content + "\n\nQo‘shimcha mashq\n" + r.content,
+                  answerKey:
+                    document.answerKey + "\n\nQo‘shimcha mashq\n" + r.answerKey,
+                })
+              }
+            />
+          )}
           {document && !busy && (
             <div className="studio-bottom-bar">
               <span>

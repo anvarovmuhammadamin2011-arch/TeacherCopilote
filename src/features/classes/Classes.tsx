@@ -1,7 +1,4 @@
-import {
-  teachingSubjects,
-  isSupportedSubject,
-} from "@/features/workspace/subjects";
+import { isSupportedSubject } from "@/features/workspace/subjects";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, CalendarDays, School } from "lucide-react";
@@ -67,7 +64,7 @@ export function Classes({ embedded = false }: { embedded?: boolean }) {
     <>
       {embedded ? (
         <div className="embedded-page-toolbar">
-          <p>Sinflar, fanlar va haftalik dars soatlari.</p>
+          <p>Sinflar, o‘tilayotgan mavzu va dars vaqtlari.</p>
           <Button onClick={() => open()}>
             <Plus size={16} />
             Sinf qo‘shish
@@ -97,6 +94,7 @@ export function Classes({ embedded = false }: { embedded?: boolean }) {
             </h2>
             <p>{classSubjects(db, c.id).join(" · ")}</p>
             <Badge>{classWeeklyHours(db, c.id)} soat / hafta</Badge>
+            <p>{c.currentTopic || "Mavzu hali belgilanmagan"}</p>
             <p>{c.year}</p>
             <div className="button-row">
               <Button asChild variant="outline">
@@ -239,6 +237,15 @@ export function Classes({ embedded = false }: { embedded?: boolean }) {
                 onChange={(e) => setDraft({ ...draft, year: e.target.value })}
               />
             </Field>
+            <Field label="O‘tilayotgan mavzu">
+              <input
+                value={draft.currentTopic || ""}
+                onChange={(e) =>
+                  setDraft({ ...draft, currentTopic: e.target.value })
+                }
+                placeholder="Masalan, chiziqli tenglamalar"
+              />
+            </Field>
             <Field label="Izoh">
               <textarea
                 value={draft.description}
@@ -251,21 +258,7 @@ export function Classes({ embedded = false }: { embedded?: boolean }) {
             {rows.map((r, i) => (
               <div className="option-edit" key={i}>
                 <Field label="Fan">
-                  <select
-                    required
-                    value={r.subject}
-                    onChange={(e) =>
-                      setRows(
-                        rows.map((x, n) =>
-                          n === i ? { ...x, subject: e.target.value } : x,
-                        ),
-                      )
-                    }
-                  >
-                    {teachingSubjects.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
+                  <input value="Matematika" readOnly />
                 </Field>
                 <Field label="Soat">
                   <input
@@ -297,24 +290,6 @@ export function Classes({ embedded = false }: { embedded?: boolean }) {
               </div>
             ))}
             <div className="button-row">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setRows([
-                    ...rows,
-                    {
-                      subject:
-                        teachingSubjects.find(
-                          (s) => !rows.some((r) => r.subject === s),
-                        ) || "Matematika",
-                      weeklyHours: 1,
-                    },
-                  ])
-                }
-              >
-                Fan qo‘shish
-              </Button>
               <Button>Saqlash</Button>
             </div>
           </form>

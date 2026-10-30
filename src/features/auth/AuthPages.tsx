@@ -12,9 +12,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <GraduationCap size={32} /> TeacherCopilot AI
         </Link>
         <div className="auth-art-content">
-          <span className="eyebrow">
-            MATEMATIKA VA INGLIZ TILI USTOZLARI UCHUN
-          </span>
+          <span className="eyebrow">MATEMATIKA USTOZLARI UCHUN</span>
           <h1>
             G‘oyadan
             <br />
@@ -29,7 +27,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             <Sparkles size={42} />
           </div>
         </div>
-        <small>Matematika va ingliz tili uchun ish maydoni</small>
+        <small>Matematika uchun ish maydoni</small>
       </aside>
       <main className="auth-main">
         <div className="auth-form-wrap">{children}</div>

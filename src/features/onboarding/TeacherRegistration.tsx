@@ -56,7 +56,6 @@ import {
   Confirm,
   DemoNote,
   Progress,
-  SearchInput,
 } from "@/components/common";
 import { uid } from "@/utils/cn";
 const steps = [
@@ -99,7 +98,6 @@ export function TeacherRegistration() {
   const existing = db.teacherProfiles.find((p) => p.id === db.teacher.id);
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [subjectQuery, setSubjectQuery] = useState("");
   const {
     register,
     watch,
@@ -585,80 +583,10 @@ export function TeacherRegistration() {
                     <BookOpen size={17} />
                     Dars berish faoliyati
                   </h3>
-                  <SearchSelect
-                    label="Asosiy fan *"
-                    value={values.professional.primarySubject}
-                    options={teachingSubjects}
-                    onChange={(v) => setValue("professional.primarySubject", v)}
-                  />
-                  <div className="field">
-                    <span>Qo‘shimcha fanlar</span>
-                    <SearchInput
-                      value={subjectQuery}
-                      onChange={setSubjectQuery}
-                      placeholder="Fanni qidiring…"
-                    />
-                    <div className="subject-chips">
-                      {[
-                        ...new Set(
-                          [
-                            ...teachingSubjects,
-                            ...values.professional.additionalSubjects,
-                          ].filter(Boolean),
-                        ),
-                      ]
-                        .filter(
-                          (s) =>
-                            s !== values.professional.primarySubject &&
-                            s
-                              .toLowerCase()
-                              .includes(subjectQuery.toLowerCase()),
-                        )
-                        .slice(0, 12)
-                        .map((s) => (
-                          <button
-                            type="button"
-                            key={s}
-                            aria-pressed={values.professional.additionalSubjects.includes(
-                              s,
-                            )}
-                            className={
-                              values.professional.additionalSubjects.includes(s)
-                                ? "selected"
-                                : ""
-                            }
-                            onClick={() =>
-                              setValue(
-                                "professional.additionalSubjects",
-                                values.professional.additionalSubjects.includes(
-                                  s,
-                                )
-                                  ? values.professional.additionalSubjects.filter(
-                                      (x) => x !== s,
-                                    )
-                                  : [
-                                      ...values.professional.additionalSubjects,
-                                      s,
-                                    ],
-                              )
-                            }
-                          >
-                            {values.professional.additionalSubjects.includes(
-                              s,
-                            ) ? (
-                              <Check size={12} />
-                            ) : (
-                              <Plus size={12} />
-                            )}{" "}
-                            {s}
-                          </button>
-                        ))}
-                    </div>
-                    <small className="muted">
-                      Matematika yoki ingliz tili yo‘nalishlarini tanlashingiz
-                      mumkin.
-                    </small>
-                  </div>
+                  <Field label="Fan">
+                    <input value="Matematika" readOnly />
+                  </Field>
+
                   <div className="form-grid">
                     <SearchSelect
                       label="Ish tajribasi *"
@@ -777,16 +705,7 @@ export function TeacherRegistration() {
                             label="Fan *"
                             error={errors.classes?.[i]?.subject?.message}
                           >
-                            <select
-                              value={c.subject}
-                              onChange={(e) =>
-                                setClass(i, "subject", e.target.value)
-                              }
-                            >
-                              {teachingSubjects.map((s) => (
-                                <option key={s}>{s}</option>
-                              ))}
-                            </select>
+                            <input value="Matematika" readOnly />
                           </Field>
                           <Field label="Bosqich">
                             <select

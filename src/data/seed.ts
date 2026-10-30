@@ -2,7 +2,7 @@ import { mathLessonSections } from "@/features/mathematics/curriculum";
 import type { Database, LessonSection } from "@/types";
 import { today } from "@/utils/cn";
 import { addDays, format } from "date-fns";
-export const subjects = ["Matematika", "Ingliz tili"];
+export const subjects = ["Matematika"];
 export const lessonSections = (topic: string, duration = 45): LessonSection[] =>
   mathLessonSections(topic, duration);
 
@@ -35,10 +35,10 @@ export function seed(): Database {
       {
         id: "c2",
         name: "9-B",
-        subject: "Ingliz tili",
+        subject: "Matematika",
         grade: 9,
         year: "2026–2027",
-        description: "Ingliz tili darslari",
+        description: "Matematika darslari",
         schoolName: teacher.school,
       },
     ],
@@ -55,7 +55,7 @@ export function seed(): Database {
         id: "ta2",
         teacherId: teacher.id,
         classId: "c2",
-        subject: "Ingliz tili",
+        subject: "Matematika",
         weeklyHours: 4,
         archived: false,
       },

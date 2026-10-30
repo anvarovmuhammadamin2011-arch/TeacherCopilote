@@ -494,11 +494,121 @@ export function makeMathTasks(
   variant = 0,
   grade = "8",
 ) {
-  const step = level === "Qiyin" ? 3 : level === "Oson" ? 1 : 2;
-  const start = variant * 7 + (Number(grade) >= 8 ? 2 : 0);
-  return Array.from({ length: Math.max(1, Math.min(50, count)) }, (_, n) =>
-    topic.make(start + n * step),
-  );
+  const start = variant * 101 + (Number(grade) >= 8 ? 2 : 0);
+  const seen = new Set<string>();
+  const result: MathTask[] = [];
+  for (
+    let n = 0;
+    result.length < Math.max(1, Math.min(50, count)) && n < 2000;
+    n++
+  ) {
+    const difficulty =
+      level === "Aralash"
+        ? ["Oson", "O‘rta", "Murakkab"][result.length % 3]
+        : level;
+    const hard = ["Murakkab", "Qiyin", "Yuqori"].includes(difficulty);
+    const easy = ["Oson", "Boshlang‘ich"].includes(difficulty);
+    const k = start + n * (hard ? 3 : easy ? 1 : 2);
+    let t = topic.make(k);
+    // Difficulty changes the method required, as well as numeric parameters.
+    if (topic.id === "linear" && !easy) {
+      const x = k + 2,
+        a = (k % 5) + 4,
+        b = (k % 7) + 1,
+        c = a - 2;
+      if (hard) {
+        const r = (a - c) * x + a * b;
+        t = task(`${a}(x + ${b}) − ${c}x = ${r} tenglamani yeching.`, x, [
+          `${a}x + ${a * b} − ${c}x = ${r}`,
+          `${a - c}x = ${r} − ${a * b} = ${(a - c) * x}`,
+          `x = ${(a - c) * x}/${a - c} = ${x}`,
+          `Tekshirish: ${a} × (${x} + ${b}) − ${c} × ${x} = ${r}`,
+        ]);
+      } else {
+        const d = (a - c) * x + b;
+        t = task(`${a}x + ${b} = ${c}x + ${d} tenglamani yeching.`, x, [
+          `${a}x − ${c}x = ${d} − ${b}`,
+          `${a - c}x = ${(a - c) * x}`,
+          `x = ${x}`,
+          `Tekshirish: ${a} × ${x} + ${b} = ${c} × ${x} + ${d} = ${a * x + b}`,
+        ]);
+      }
+    }
+    if (["fractions", "fraction-subtract"].includes(topic.id) && !easy) {
+      const d = k + 5,
+        a = 2,
+        b = 1,
+        factor = hard ? 3 : 2;
+      const subtract = topic.id === "fraction-subtract";
+      const numerator = a * factor + (subtract ? -b : b);
+      const denominator = d * factor,
+        sign = subtract ? "−" : "+";
+      t = task(
+        `${a}/${d} ${sign} ${b}/${denominator} ni hisoblang va qisqartiring.`,
+        fraction(numerator, denominator),
+        [
+          `Umumiy maxraj: ${denominator}`,
+          `${a}/${d} = ${a * factor}/${denominator}`,
+          `${a * factor}/${denominator} ${sign} ${b}/${denominator} = ${numerator}/${denominator}`,
+          `Javob: ${fraction(numerator, denominator)}`,
+        ],
+        [
+          fraction(numerator + 1, denominator),
+          fraction(numerator, denominator + 1),
+          fraction(numerator + 2, denominator),
+        ],
+      );
+    }
+    if (topic.id === "powers") {
+      const a = k + 2,
+        m = easy ? 1 : 2,
+        p = hard ? 3 : 2;
+      t = task(
+        `${a}^${m} × ${a}^${p} ni bitta daraja shaklida yozing.`,
+        `${a}^${m + p}`,
+        [`${a}^${m} × ${a}^${p} = ${a}^(${m}+${p})`, `Javob: ${a}^${m + p}`],
+        [`${a}^${m + p + 1}`, `${a}^${m + p - 1}`, `${a + 1}^${m + p}`],
+      );
+    }
+    if (topic.id === "triangle") {
+      const a = 20 + (k % 60),
+        b = 20 + (Math.floor(k / 60) % 60),
+        c = 180 - a - b;
+      t = task(
+        `Uchburchakning ikki burchagi ${a}° va ${b}°. Uchinchi burchakni toping.`,
+        `${c}°`,
+        [`γ = 180° − ${a}° − ${b}°`, `γ = ${c}°`],
+        [`${c + 1}°`, `${c - 1}°`, `${c + 2}°`],
+      );
+    }
+    if (topic.id === "trig") {
+      const scale = Math.floor(k / 8) + 1,
+        m = (k % 8) + 2;
+      const a = (m * m - 1) * scale,
+        b = 2 * m * scale,
+        c = (m * m + 1) * scale;
+      const ratio = hard ? "cos" : "sin",
+        num = hard ? b : a;
+      t = task(
+        `To‘g‘ri burchakli uchburchakda α ga qarshi katet ${a} cm, yondosh katet ${b} cm, gipotenuza ${c} cm. ${ratio} α ni toping.`,
+        fraction(num, c),
+        [
+          `${ratio} α = ${hard ? "yondosh" : "qarshi"} katet / gipotenuza`,
+          `${ratio} α = ${num}/${c} = ${fraction(num, c)}`,
+        ],
+        [fraction(num + 1, c), fraction(num, c + 1), fraction(num + 2, c)],
+      );
+    }
+    if (!seen.has(t.prompt)) {
+      seen.add(t.prompt);
+      result.push(t);
+    }
+  }
+  if (result.length < Math.min(50, count))
+    throw new Error(
+      "Bu mavzuda yetarli takrorlanmaydigan misol topilmadi. Sonni kamaytiring.",
+    );
+  return result;
 }
 export function mathLessonSections(
   topicText: string,
@@ -507,9 +617,10 @@ export function mathLessonSections(
   grade = "8",
   level = "O‘rta",
   style = "Interaktiv",
+  count = 5,
 ) {
   const { topic, matched } = resolveMathTopic(topicText, subject);
-  const tasks = makeMathTasks(topic, 6, level, 0, grade);
+  const tasks = makeMathTasks(topic, Math.max(count + 3, 6), level, 0, grade);
   const allocations = [0.12, 0.3, 0.23, 0.15, 0.1].map((x) =>
     Math.floor(duration * x),
   );
@@ -539,7 +650,7 @@ export function mathLessonSections(
       title: "Amaliy mashqlar",
       minutes: allocations[2],
       content: tasks
-        .slice(1, 4)
+        .slice(1, count + 1)
         .map((t, n) => `${n + 1}. ${t.prompt}`)
         .join("\n"),
     },
@@ -564,7 +675,7 @@ export function mathLessonSections(
       title: "Xulosa",
       minutes: duration - allocations.reduce((s, n) => s + n, 0),
       content: `Asosiy fikr: ${topic.rule}\nO‘qituvchi uchun mashq javoblari: ${tasks
-        .slice(1, 4)
+        .slice(1, count + 1)
         .map((t, n) => `${n + 1}) ${t.answer}`)
         .join(
           "; ",

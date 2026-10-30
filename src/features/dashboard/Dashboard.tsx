@@ -34,7 +34,7 @@ export default function Dashboard() {
       id: x.id,
       title: x.title,
       date: x.date,
-      kind: "Test",
+      kind: x.kind === "assessment" ? "Nazorat ishi" : "Test",
       href: "/teacher/quizzes/" + x.id,
     })),
     ...db.documents.map((x) => ({
@@ -57,7 +57,7 @@ export default function Dashboard() {
             tayyorlang.
           </p>
         </div>
-        <span>Matematika va ingliz tili</span>
+        <span>Matematika ustoziga</span>
       </section>
       <TopicBar />
       <div className="quick-create">
@@ -144,7 +144,7 @@ export default function Dashboard() {
               description={
                 context.topic
                   ? `«${context.topic}» uchun yuqoridan material turini tanlang.`
-                  : "Yuqorida fan va mavzuni tanlab boshlang."
+                  : "Yuqorida sinf va mavzuni tanlab boshlang."
               }
             />
           )}
@@ -176,7 +176,7 @@ export default function Dashboard() {
           ) : (
             <Empty
               title="Dars hali rejalashtirilmagan"
-              description="Sinflar va jadval bo‘limida vaqt belgilang."
+              description="Sinflarim bo‘limida vaqt belgilang."
             />
           )}
         </Card>

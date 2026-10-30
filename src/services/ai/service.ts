@@ -1,9 +1,4 @@
 import {
-  englishQuiz,
-  englishDocument,
-  englishLesson,
-} from "@/features/english/curriculum";
-import {
   resolveMathTopic,
   makeMathTasks,
   mathLessonSections,
@@ -25,6 +20,8 @@ export interface AIInput {
   questionType?: string;
   questionTypes?: string[];
   variant?: number;
+  variants?: number;
+  answerFormat?: "answer" | "steps";
 }
 export const questionTypes = [
   "Variantli",
@@ -50,10 +47,36 @@ const usage = (kind: string) =>
   useStore.getState().mutate((d) => {
     d.aiUsage.push({ id: uid(), kind, date: today() });
   });
+function validate(i: AIInput) {
+  if (!["Matematika", "Algebra", "Geometriya"].includes(i.subject))
+    throw new Error("Faqat matematika yo‘nalishlari qo‘llanadi.");
+  if (
+    !Number.isInteger(i.count ?? 5) ||
+    (i.count ?? 5) < 1 ||
+    (i.count ?? 5) > 30
+  )
+    throw new Error("1–30 ta topshiriq tanlang.");
+  if (
+    !Number.isInteger(i.variants ?? 1) ||
+    (i.variants ?? 1) < 1 ||
+    (i.variants ?? 1) > 4
+  )
+    throw new Error("1–4 ta variant tanlang.");
+  const result = resolveMathTopic(i.topic, i.subject);
+  if (!result.matched)
+    throw new Error(
+      "Bu mavzu uchun shablon hali yo‘q. Tavsiya qilingan matematik mavzulardan birini tanlang.",
+    );
+  return result.topic;
+}
+const keyFor = (t: ReturnType<typeof makeMathTasks>[number], i: AIInput) =>
+  i.answerFormat === "answer"
+    ? t.answer
+    : t.steps.join("\n") + "\nJavob: " + t.answer;
 export class MockAIService implements AIService {
   async generateLesson(i: AIInput) {
+    validate(i);
     usage("Dars rejasi");
-    if (i.subject === "Ingliz tili") return delay(englishLesson(i), 650);
     return delay(
       mathLessonSections(
         i.topic,
@@ -62,24 +85,24 @@ export class MockAIService implements AIService {
         i.grade,
         i.level,
         i.style,
+        i.count,
       ).map((s, n) => ({
         ...s,
         content:
           s.content +
-          (n === 0
-            ? `\nTil: ${i.language || "O‘zbek"}. ${i.instructions || ""}`
+          (n === 0 && i.instructions
+            ? "\nUstoz qaydi (avtomatik bajarilmagan): " + i.instructions
             : ""),
       })),
-      700,
+      500,
     );
   }
   async generateQuiz(i: AIInput) {
+    const topic = validate(i);
     usage("Test");
-    if (i.subject === "Ingliz tili") return delay(englishQuiz(i), 650);
-    const { topic, matched } = resolveMathTopic(i.topic, i.subject);
     const tasks = makeMathTasks(
       topic,
-      i.count || 7,
+      i.count || 5,
       i.level,
       i.variant || 0,
       i.grade,
@@ -98,10 +121,9 @@ export class MockAIService implements AIService {
           correct: 0,
           correctAnswers: [0],
           answer: t.answer,
+          solution: t.steps.join("\n"),
           points: 1,
         };
-        if (!matched && n === 0)
-          q.text = `Namuna mavzu: ${topic.title}.\n` + q.text;
         if (type === "Variantli") {
           const choices = [t.answer, ...t.wrong];
           const shift = (n + (i.variant || 0)) % 4;
@@ -109,7 +131,7 @@ export class MockAIService implements AIService {
           q.correct = (4 - shift) % 4;
           q.correctAnswers = [q.correct];
         } else if (type === "Bir nechta javob") {
-          q.text = t.prompt + "\nIkkita to‘g‘ri xulosani tanlang.";
+          q.text += "\nIkkita to‘g‘ri xulosani tanlang.";
           q.options = [
             `Javob: ${t.answer}`,
             `Javob: ${t.wrong[0]}`,
@@ -119,87 +141,101 @@ export class MockAIService implements AIService {
           q.correctAnswers = [0, 2];
         } else if (type === "To‘g‘ri / noto‘g‘ri") {
           const truth = n % 2 === 0;
-          q.text =
-            t.prompt +
-            `\nTaklif qilingan javob: ${truth ? t.answer : t.wrong[0]}.`;
+          q.text += `\nTaklif qilingan javob: ${truth ? t.answer : t.wrong[0]}.`;
           q.options = ["To‘g‘ri", "Noto‘g‘ri"];
           q.correct = truth ? 0 : 1;
-        } else if (type === "Bo‘sh joyni to‘ldirish") {
+          q.answer = q.options[q.correct];
+        } else if (type === "Bo‘sh joyni to‘ldirish")
           q.text += "\nNatija: ___.";
-        } else if (type === "Moslashtirish") {
+        else if (type === "Moslashtirish") {
           q.text = "Masalalarni mos javoblar bilan birlashtiring.";
+          const seen = new Set<string>();
           const pool = makeMathTasks(
             topic,
-            25,
+            30,
             i.level,
-            i.variant || 0,
+            (i.variant || 0) + n,
             i.grade,
-          );
-          const seen = new Set<string>();
-          q.pairs = pool
-            .filter((item) => {
-              if (seen.has(item.answer)) return false;
-              seen.add(item.answer);
+          )
+            .filter((x) => {
+              if (seen.has(x.answer)) return false;
+              seen.add(x.answer);
               return true;
             })
-            .slice(0, 3)
-            .map((item) => ({ left: item.prompt, right: item.answer }));
+            .slice(0, 3);
+          q.pairs = pool.map((x) => ({ left: x.prompt, right: x.answer }));
+          q.solution = pool
+            .map((x, j) => `${j + 1}. ${x.steps.join("; ")}`)
+            .join("\n");
         } else if (type === "Qisqa javob") {
-          q.text += "\nYechishning asosiy bosqichlarini yozing.";
-          q.answer = t.steps.join("\n") + `\nJavob: ${t.answer}`;
+          q.text += "\nYechimni yozing.";
           q.points = 2;
         } else {
-          q.text +=
-            "\nYechimni asoslang, tekshirish usulini yozing va ishlatilgan qoidani izohlang.";
-          q.answer =
-            t.steps.join("\n") +
-            `\nJavob: ${t.answer}\nMezon: qoida va usul (2), hisob (2), tekshirish (1).`;
+          q.text += "\nYechimni asoslang va natijani tekshiring.";
           q.points = 5;
         }
         return q;
       }),
-      750,
+      500,
     );
   }
   async generateDocument(i: AIInput, kind: "conspect" | "homework") {
-    usage(kind === "conspect" ? "Konspekt" : "Uy vazifasi");
-    if (i.subject === "Ingliz tili")
-      return delay(englishDocument(i, kind), 650);
-    const { topic, matched } = resolveMathTopic(i.topic, i.subject);
-    const tasks = makeMathTasks(topic, i.count || 5, i.level, 0, i.grade);
-    const intro =
-      `${i.subject} · ${i.grade}-sinf · ${i.language || "O‘zbek"}\nMavzu: ${i.topic}` +
-      (!matched
-        ? `\nMaxsus shablon topilmadi. Namuna yo‘nalish: ${topic.title}.`
-        : "");
+    const topic = validate(i);
+    usage(kind === "conspect" ? "Konspekt" : "Mashqlar");
+    const intro = `${i.subject} · ${i.grade}-sinf\nMavzu: ${i.topic}`;
     if (kind === "conspect") {
-      const example = tasks[0];
+      const tasks = makeMathTasks(
+          topic,
+          (i.count || 5) + 1,
+          i.level,
+          0,
+          i.grade,
+        ),
+        example = tasks[0];
       return delay(
         {
           content:
             intro +
-            `\n\nKirish\n${topic.title} mavzusida formuladan to‘g‘ri foydalanish va javobni tekshirishni o‘rganamiz.\n\nAsosiy tushuntirish\n${topic.rule}\n${i.level === "Batafsil" ? "Har bir almashtirishni asoslang va natijani teskari amal yoki ta’rif bilan tekshiring." : ""}\n\nAsosiy tushunchalar\n${topic.concepts}\n\nYechilgan misol\n${example.prompt}\n${example.steps.join("\n")}\nJavob: ${example.answer}\n\nMustaqil mashqlar\n${tasks
-              .slice(1, i.level === "Qisqa" ? 3 : 5)
+            `\n\nKirish\n${topic.title} qoidasidan foydalanishni o‘rganamiz.\n\nAsosiy tushuntirish\n${topic.rule}\n\nAsosiy tushunchalar\n${topic.concepts}\n\nYechilgan misol\n${example.prompt}\n${example.steps.join("\n")}\nJavob: ${example.answer}\n\nMustaqil mashqlar\n${tasks
+              .slice(1)
               .map((t, n) => `${n + 1}. ${t.prompt}`)
               .join(
                 "\n",
-              )}\n\nKo‘p uchraydigan xato\n${topic.mistake}\n\nXulosa\n${topic.rule}\n\nTakrorlash savollari\n1. Formuladagi belgilar nimani anglatadi?\n2. ${tasks[1]?.prompt || tasks[0].prompt}\n3. Javobni qanday tekshirish mumkin?`,
-          answerKey: "",
+              )}\n\nKo‘p uchraydigan xato\n${topic.mistake}\n\nXulosa\n${topic.rule}\n\nTakrorlash savollari\n1. Formuladagi belgilar nimani anglatadi?\n2. Javobni qanday tekshirish mumkin?`,
+          answerKey:
+            tasks
+              .slice(1)
+              .map((t, n) => `${n + 1}. ${keyFor(t, i)}`)
+              .join("\n\n") +
+            (i.instructions
+              ? "\n\nUstoz qaydi (avtomatik bajarilmagan): " + i.instructions
+              : ""),
         },
-        650,
+        500,
+      );
+    }
+    const content: string[] = [],
+      answers: string[] = [];
+    for (let v = 0; v < (i.variants || 1); v++) {
+      const tasks = makeMathTasks(topic, i.count || 5, i.level, v, i.grade);
+      const label = String.fromCharCode(65 + v) + " VARIANT";
+      content.push(
+        `${label}\nIsm: _____________________  Sana: __________\nQiyinlik: ${i.level || "O‘rta"}\n\nMashqlar\n${tasks.map((t, n) => `${n + 1}. ${t.prompt}\nYechim: ________________________________________`).join("\n\n")}`,
+      );
+      answers.push(
+        `${label}\n${tasks.map((t, n) => `${n + 1}. ${keyFor(t, i)}`).join("\n\n")}`,
       );
     }
     return delay(
       {
-        content:
-          intro +
-          `\nQiyinlik: ${i.level || "O‘rta"}\n\nKo‘rsatma\nQoida: ${topic.rule}\nHar bir mashq uchun yechim bosqichlarini va yakuniy javobni yozing.\n\nMashqlar\n` +
-          tasks.map((t, n) => `${n + 1}. ${t.prompt}`).join("\n"),
-        answerKey: tasks
-          .map((t, n) => `${n + 1}. ${t.answer}\n${t.steps.join("\n")}`)
-          .join("\n\n"),
+        content: intro + "\n\n" + content.join("\n\n\f\n"),
+        answerKey:
+          answers.join("\n\n\f\n") +
+          (i.instructions
+            ? "\n\nUstoz qaydi (avtomatik bajarilmagan): " + i.instructions
+            : ""),
       },
-      650,
+      500,
     );
   }
   async generateHomework(topic: string) {
@@ -211,23 +247,22 @@ export class MockAIService implements AIService {
     ).content;
   }
   explainTopic(text: string) {
-    const { topic } = resolveMathTopic(text);
+    const topic = validate({
+      topic: text,
+      subject: "Matematika",
+      grade: "8",
+      duration: 45,
+    });
     const t = topic.make(2);
     return delay(
-      `${topic.title}\n${topic.rule}\n\nNamuna: ${t.prompt}\n${t.steps.join("\n")}\nJavob: ${t.answer}`,
+      `${topic.title}\n${topic.rule}\n\n${t.prompt}\n${t.steps.join("\n")}\nJavob: ${t.answer}`,
     );
   }
   sendChatMessage(message: string) {
-    usage("AI yordamchi");
-    const { topic, matched } = resolveMathTopic(message);
-    const t = topic.make(2);
-    return delay(
-      `Matematika yordamchisi · namunaviy javob\n\n${matched ? topic.title : "So‘rov uchun yaqin matematik namuna: " + topic.title}\n\nQoida\n${topic.rule}\n\nYechilgan misol (so‘rovingizdagi masalaning avtomatik yechimi emas)\n${t.prompt}\n${t.steps.join("\n")}\nJavob: ${t.answer}\n\nDarsda qo‘llash\n1. Belgilar va formulani doskada izohlang.\n2. Juftliklarda o‘xshash misol yeching.\n3. Xatoni topish mashqi: ${topic.mistake}\n\nBu mahalliy matematik shablon. Erkin masalalarni tahlil qiladigan haqiqiy AI hali ulanmagan.`,
-      650,
-    );
+    return this.explainTopic(message);
   }
 }
-// Future provider implements the same interface via a server endpoint. Never put Groq/Qwen keys in the client.
+// Future Groq/Qwen integration is server-side. No provider keys belong in the browser.
 export class BackendAIService implements AIService {
   constructor(private endpoint = "/api/ai") {}
   private async request<T>(action: string, input: unknown): Promise<T> {

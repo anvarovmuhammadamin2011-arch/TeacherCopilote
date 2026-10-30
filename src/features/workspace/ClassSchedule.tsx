@@ -10,13 +10,13 @@ export default function ClassSchedule() {
   return (
     <>
       <PageHead
-        title="Sinflar va jadval"
+        title="Sinflarim"
         description="Dars beradigan sinflaringiz va rejalashtirilgan darslar."
       />
       <div
         className="workspace-tabs"
         role="group"
-        aria-label="Sinflar va jadval ko‘rinishi"
+        aria-label="Sinflarim ko‘rinishi"
       >
         <button
           aria-pressed={!schedule}

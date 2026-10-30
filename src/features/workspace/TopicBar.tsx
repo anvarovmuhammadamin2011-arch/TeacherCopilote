@@ -1,51 +1,42 @@
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import { useStore } from "@/stores/useStore";
 import { teacherClasses } from "@/services/api/onboardingRepository";
-import { teachingSubjects } from "./subjects";
+import { mathDirections } from "./subjects";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
 import { Field } from "@/components/common";
-import { BookOpen } from "lucide-react";
-export default function TopicBar() {
-  const context = usePreparationContext();
+import { BookOpen, SlidersHorizontal } from "lucide-react";
+import SourceUpload from "./SourceUpload";
+export default function TopicBar({ full = false }: { full?: boolean }) {
+  const c = usePreparationContext();
   const update = usePreparation((s) => s.update);
-  const db = useStore((s) => s.db);
-  const classes = teacherClasses(db);
+  const classes = teacherClasses(useStore((s) => s.db));
   return (
     <section className="topic-context" aria-label="Umumiy mavzu">
       <div className="topic-context-heading">
         <span>
           <BookOpen size={17} />
-          <b>Bitta mavzu — barcha materiallar</b>
+          <b>Bitta mavzu — tayyor dars materiallari</b>
         </span>
-        <small>Tanlovingiz bo‘limlar orasida saqlanadi</small>
+        <small>Matematika · tanlovingiz saqlanadi</small>
       </div>
       <div className="topic-context-fields">
-        <Field label="Fan">
-          <select
-            value={context.subject}
-            onChange={(e) => update({ subject: e.target.value, topic: "" })}
-          >
-            {teachingSubjects.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </Field>
         <Field label="Sinf">
           <select
-            value={context.classId || context.grade}
+            value={c.classId || c.grade}
             onChange={(e) => {
-              const c = classes.find((c) => c.id === e.target.value);
+              const room = classes.find((x) => x.id === e.target.value);
               update({
-                classId: c?.id || "",
-                grade: c
-                  ? String(c.grade || parseInt(c.name) || 8)
+                classId: room?.id || "",
+                grade: room
+                  ? String(room.grade || parseInt(room.name) || 8)
                   : e.target.value,
+                ...(room?.currentTopic ? { topic: room.currentTopic } : {}),
               });
             }}
           >
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+            {classes.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
               </option>
             ))}
             {Array.from({ length: 11 }, (_, i) => (
@@ -55,34 +46,112 @@ export default function TopicBar() {
             ))}
           </select>
         </Field>
+        <Field label="Yo‘nalish">
+          <select
+            value={c.subject}
+            onChange={(e) => update({ subject: e.target.value, topic: "" })}
+          >
+            {mathDirections.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </Field>
         <Field label="Mavzu">
           <input
-            placeholder={
-              context.subject === "Ingliz tili"
-                ? "Masalan, Present Simple"
-                : "Masalan, chiziqli tenglamalar"
-            }
-            value={context.topic}
+            value={c.topic}
+            placeholder="Masalan, chiziqli tenglamalar"
             onChange={(e) => update({ topic: e.target.value })}
           />
         </Field>
-        <Field label="Yo‘riqnoma tili">
+        <Field label="Dars vaqti (daqiqa)">
           <select
-            value={context.language}
-            onChange={(e) => update({ language: e.target.value })}
+            value={c.duration}
+            onChange={(e) => update({ duration: Number(e.target.value) })}
           >
-            {["O‘zbek", "Rus", "Ingliz"].map((s) => (
-              <option key={s}>{s}</option>
+            {[30, 45, 60, 90].map((n) => (
+              <option key={n} value={n}>
+                {n} daqiqa
+              </option>
             ))}
           </select>
         </Field>
       </div>
       <MathTopicSuggestions
-        grade={context.grade}
-        subject={context.subject}
-        value={context.topic}
+        grade={c.grade}
+        subject={c.subject}
+        value={c.topic}
         onSelect={(topic) => update({ topic })}
       />
+      {full && (
+        <>
+          <details className="math-options" open>
+            <summary>
+              <SlidersHorizontal size={15} />
+              Material sozlamalari
+            </summary>
+            <div className="math-options-grid">
+              <Field label="Qiyinlik">
+                <select
+                  value={c.level}
+                  onChange={(e) => update({ level: e.target.value })}
+                >
+                  {["Oson", "O‘rta", "Murakkab", "Aralash"].map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Topshiriqlar soni">
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={c.count}
+                  onChange={(e) => update({ count: Number(e.target.value) })}
+                />
+              </Field>
+              <Field label="Variantlar soni">
+                <select
+                  value={c.variants}
+                  onChange={(e) => update({ variants: Number(e.target.value) })}
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Ustoz javoblari">
+                <select
+                  value={c.answerFormat}
+                  onChange={(e) =>
+                    update({
+                      answerFormat: e.target.value as "answer" | "steps",
+                    })
+                  }
+                >
+                  <option value="answer">Faqat javob</option>
+                  <option value="steps">Bosqichma-bosqich yechim</option>
+                </select>
+              </Field>
+            </div>
+            <p className="muted">
+              Son va variantlar test, nazorat ishi, mashq va uy vazifasiga
+              qo‘llanadi. Javoblar tarqatma varaqdan alohida saqlanadi.
+            </p>
+            <Field label="Qo‘shimcha ko‘rsatma / darslik sahifasi">
+              <textarea
+                rows={2}
+                maxLength={1500}
+                value={c.instructions}
+                onChange={(e) => update({ instructions: e.target.value })}
+                placeholder="Masalan, darslikning 52-sahifasi. Maxsus ko‘rsatmalar hozir hujjatga ustoz qaydi sifatida qo‘shiladi."
+              />
+            </Field>
+          </details>
+          <SourceUpload />
+        </>
+      )}
     </section>
   );
 }

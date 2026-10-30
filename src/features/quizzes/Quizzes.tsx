@@ -1,3 +1,5 @@
+import MaterialActions from "@/features/mathematics/MaterialActions";
+import SeparateExports from "@/features/mathematics/SeparateExports";
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
 import { useState, useEffect } from "react";
@@ -16,8 +18,6 @@ import {
   Sparkles,
   Save,
   Eye,
-  FileDown,
-  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/stores/useStore";
@@ -25,7 +25,6 @@ import { aiService, questionTypes, type AIInput } from "@/services/ai/service";
 import { teacherClasses } from "@/services/api/onboardingRepository";
 import { subjects } from "@/data/seed";
 import { uid, today } from "@/utils/cn";
-import { printDocument, exportWord } from "@/utils/export";
 import type { Quiz, Question } from "@/types";
 import {
   Card,
@@ -38,54 +37,11 @@ import {
   Badge,
   Confirm,
 } from "@/components/common";
-export function answerText(q: Question) {
-  if (q.type === "Moslashtirish")
-    return (q.pairs || []).map((p) => p.left + " → " + p.right).join("; ");
-  if (q.type === "Bir nechta javob")
-    return (q.correctAnswers || [])
-      .map((n) => String.fromCharCode(65 + n) + ". " + q.options[n])
-      .join("; ");
-  return q.options.length
-    ? String.fromCharCode(65 + q.correct) + ". " + q.options[q.correct]
-    : q.answer;
-}
-export function quizText(q: Quiz, keys: boolean) {
-  const variants = q.variants?.length
-    ? q.variants
-    : [{ label: "A", questions: q.questions }];
-  return (
-    `${q.subject} · ${q.grade}-sinf · ${q.time} daqiqa · ${q.language || "O‘zbek"}\nIsm: __________________  Sana: __________\n\n` +
-    variants
-      .map(
-        (v) =>
-          `${v.label} VARIANT\n\n` +
-          v.questions
-            .map(
-              (x, i) =>
-                `${i + 1}. ${x.text} (${x.points} ball)\n` +
-                (x.type === "Moslashtirish"
-                  ? (x.pairs || [])
-                      .map(
-                        (p, n) =>
-                          `${n + 1}. ${p.left}    ${String.fromCharCode(65 + n)}. ${(x.pairs || [])[(n + 1) % (x.pairs?.length || 1)]?.right}`,
-                      )
-                      .join("\n")
-                  : x.options
-                      .map((o, n) => `${String.fromCharCode(65 + n)}. ${o}`)
-                      .join("\n")) +
-                (!x.options.length && x.type !== "Moslashtirish"
-                  ? "\nJavob: __________________________________________________"
-                  : ""),
-            )
-            .join("\n\n") +
-          (keys
-            ? "\n\nJAVOB KALITI\n" +
-              v.questions.map((x, i) => `${i + 1}. ${answerText(x)}`).join("\n")
-            : ""),
-      )
-      .join("\n\n────────────────\n\n")
-  );
-}
+import {
+  answerText,
+  quizText,
+  quizKeys,
+} from "@/features/mathematics/assessment";
 export function Quizzes() {
   const { db, mutate } = useStore();
   const [search, setSearch] = useState("");
@@ -150,7 +106,13 @@ const blank = (type = "Variantli"): Question => ({
     { left: "", right: "" },
   ],
 });
-export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
+export function QuizCreate({
+  integrated = false,
+  assessment = false,
+}: {
+  integrated?: boolean;
+  assessment?: boolean;
+}) {
   const context = usePreparationContext();
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -172,16 +134,19 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
       existing?.title ||
       params.get("topic") ||
       (integrated ? context.topic : ""),
-    count: existing?.questions.length || 7,
-    difficulty: existing?.difficulty || "O‘rta",
+    count: existing?.questions.length || (integrated ? context.count : 5),
+    difficulty: existing?.difficulty || (integrated ? context.level : "O‘rta"),
     language: existing?.language || (integrated ? context.language : "O‘zbek"),
-    time: existing?.time || 45,
-    variants: existing?.variants?.length || 1,
+    time: existing?.time || (integrated ? context.duration : 45),
+    variants: existing?.variants?.length || (integrated ? context.variants : 1),
+    answerFormat:
+      existing?.answerFormat ||
+      (integrated ? context.answerFormat : ("steps" as const)),
   });
   const [types, setTypes] = useState<string[]>(
     existing
       ? [...new Set(existing.questions.map((q) => q.type))]
-      : ["Variantli"],
+      : [assessment ? "Qisqa javob" : "Variantli"],
   );
   const [test, setTest] = useState<Quiz | null>(
     existing ? structuredClone(existing) : null,
@@ -193,15 +158,13 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
   const [keys, setKeys] = useState(false);
   useEffect(() => {
     if (existing)
-      usePreparation
-        .getState()
-        .update({
-          subject: existing.subject,
-          grade: existing.grade,
-          classId: existing.classId,
-          topic: existing.title,
-          language: existing.language || "O‘zbek",
-        });
+      usePreparation.getState().update({
+        subject: existing.subject,
+        grade: existing.grade,
+        classId: existing.classId,
+        topic: existing.title,
+        language: existing.language || "O‘zbek",
+      });
     setTest(existing ? structuredClone(existing) : null);
     setActive(0);
     setPreview(false);
@@ -218,6 +181,7 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
         variants: existing.variants?.length || 1,
         difficulty: existing.difficulty || "O‘rta",
         language: existing.language || "O‘zbek",
+        answerFormat: existing.answerFormat || "steps",
       }));
   }, [id]);
   const variants = test?.variants?.length
@@ -235,6 +199,8 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
     level: form.difficulty,
     language: form.language,
     questionTypes: typeList,
+    answerFormat: form.answerFormat,
+    instructions: integrated ? context.instructions : "",
   });
   const update = (next: Question[]) =>
     setTest((prev) => {
@@ -257,11 +223,11 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
     if (
       !Number.isInteger(form.count) ||
       form.count < 1 ||
-      form.count > 50 ||
+      form.count > 30 ||
       form.variants < 1 ||
       form.variants > 4
     ) {
-      toast.error("1–50 savol, 1–4 variant tanlang.");
+      toast.error("1–30 savol, 1–4 variant tanlang.");
       return;
     }
     setBusy(true);
@@ -274,6 +240,8 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
         });
       setTest({
         id: id || uid(),
+        kind: existing?.kind || (assessment ? "assessment" : "test"),
+        answerFormat: form.answerFormat,
         title: form.topic.trim(),
         subject: form.subject,
         grade: form.grade,
@@ -288,8 +256,8 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
       });
       setActive(0);
       setPreview(false);
-    } catch {
-      toast.error("Test yaratilmadi. Qayta urinib ko‘ring.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Test yaratilmadi.");
     } finally {
       setBusy(false);
     }
@@ -352,8 +320,12 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
   return (
     <>
       <PageHead
-        title="Test generatori"
-        description="Matematika va ingliz tili uchun 7 savol turida topshiriqlar."
+        title={
+          assessment || existing?.kind === "assessment"
+            ? "Nazorat ishi"
+            : "Test generatori"
+        }
+        description="Matematika uchun savollar, variantlar va tekshiriladigan yechimlar."
         action={
           <Button asChild variant="outline">
             <Link to="/teacher/quizzes">Saqlangan testlar</Link>
@@ -379,7 +351,7 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
               >
-                {[...new Set([db.teacher.subject, ...subjects])].map((s) => (
+                {subjects.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
@@ -424,19 +396,19 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
               onSelect={(topic) => setForm({ ...form, topic })}
             />
             <div className="form-grid">
-              <Field label="Savollar soni">
+              <Field label="Savollar soni" hidden={integrated}>
                 <input
                   type="number"
                   required
                   min={1}
-                  max={50}
+                  max={30}
                   value={form.count}
                   onChange={(e) =>
                     setForm({ ...form, count: Number(e.target.value) })
                   }
                 />
               </Field>
-              <Field label="Variantlar soni">
+              <Field label="Variantlar soni" hidden={integrated}>
                 <input
                   type="number"
                   min={1}
@@ -448,14 +420,14 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                 />
               </Field>
             </div>
-            <Field label="Qiyinlik">
+            <Field label="Qiyinlik" hidden={integrated}>
               <select
                 value={form.difficulty}
                 onChange={(e) =>
                   setForm({ ...form, difficulty: e.target.value })
                 }
               >
-                {["Oson", "O‘rta", "Qiyin"].map((s) => (
+                {["Oson", "O‘rta", "Murakkab", "Aralash"].map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
@@ -470,7 +442,7 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                 ))}
               </select>
             </Field>
-            <Field label="Davomiylik (daqiqa)">
+            <Field label="Davomiylik (daqiqa)" hidden={integrated}>
               <input
                 type="number"
                 min={5}
@@ -481,6 +453,22 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                 }
               />
             </Field>
+            {!integrated && (
+              <Field label="Ustoz javoblari">
+                <select
+                  value={form.answerFormat}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      answerFormat: e.target.value as "answer" | "steps",
+                    })
+                  }
+                >
+                  <option value="answer">Faqat javob</option>
+                  <option value="steps">Bosqichma-bosqich yechim</option>
+                </select>
+              </Field>
+            )}
             <fieldset>
               <legend>Savol turlari</legend>
               {questionTypes.map((t) => (
@@ -502,7 +490,11 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
             </fieldset>
             <Button className="full" disabled={busy}>
               <Sparkles size={16} />
-              {busy ? "Test tayyorlanmoqda…" : "Namuna test yaratish"}
+              {busy
+                ? "Tayyorlanmoqda…"
+                : assessment
+                  ? "Nazorat ishi yaratish"
+                  : "Namuna test yaratish"}
             </Button>
           </form>
         </Card>
@@ -522,22 +514,6 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                     <Eye size={16} />
                     {preview ? "Tahrirlash" : "Oldindan ko‘rish"}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      printDocument(test.title, quizText(test, keys))
-                    }
-                  >
-                    <Printer size={16} />
-                    PDF / Chop etish
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => exportWord(test.title, quizText(test, keys))}
-                  >
-                    <FileDown size={16} />
-                    Word (.docx)
-                  </Button>
                 </div>
                 <label className="check-label">
                   <input
@@ -545,12 +521,34 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                     checked={keys}
                     onChange={(e) => setKeys(e.target.checked)}
                   />
-                  Javob kalitini ko‘rsatish / eksportga qo‘shish
+                  Javoblarni oldindan ko‘rishda ko‘rsatish
                 </label>
-                <p className="muted">
-                  PDF uchun chop etish oynasida “Save as PDF” ni tanlang.
-                  Eksport barcha variantlarni o‘z ichiga oladi.
-                </p>
+                <SeparateExports
+                  title={test.title}
+                  content={quizText(test, false)}
+                  answerKey={quizKeys(test)}
+                />
+                <MaterialActions
+                  topic={test.title}
+                  subject={test.subject}
+                  grade={test.grade}
+                  onApply={(r) =>
+                    update([
+                      ...questions,
+                      {
+                        id: uid(),
+                        text: r.content,
+                        type: "Qisqa javob",
+                        options: [],
+                        correct: 0,
+                        answer:
+                          r.answerKey.split("Javob: ").pop() || r.answerKey,
+                        solution: r.answerKey,
+                        points: 2,
+                      },
+                    ])
+                  }
+                />
                 <div className="tabs">
                   {variants.map((v, i) => (
                     <button
@@ -610,7 +608,12 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                         <p>Javob: ___________________________</p>
                       )}
                       {keys && (
-                        <div className="answer-key">Javob: {answerText(q)}</div>
+                        <div className="answer-key">
+                          Javob: {answerText(q)}
+                          {test.answerFormat !== "answer" && q.solution && (
+                            <pre>{q.solution}</pre>
+                          )}
+                        </div>
                       )}
                     </section>
                   ))}
@@ -719,6 +722,14 @@ export function QuizCreate({ integrated = false }: { integrated?: boolean }) {
                           value={q.text}
                           onChange={(e) =>
                             change({ ...q, text: e.target.value })
+                          }
+                        />
+                      </Field>
+                      <Field label="Ustoz uchun yechim">
+                        <textarea
+                          value={q.solution || ""}
+                          onChange={(e) =>
+                            change({ ...q, solution: e.target.value })
                           }
                         />
                       </Field>

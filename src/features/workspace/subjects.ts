@@ -1,11 +1,8 @@
-export const teachingSubjects = ["Matematika", "Ingliz tili"];
-export function normalizeSubject(subject?: string) {
-  return /ingliz|english/i.test(subject || "") ? "Ingliz tili" : "Matematika";
-}
+export const teachingSubjects = ["Matematika"];
+export const mathDirections = ["Matematika", "Algebra", "Geometriya"];
+export const normalizeSubject = (_subject?: string) => "Matematika";
 export const isSupportedSubject = (subject?: string) =>
-  /^(matematika|algebra|geometriya|ingliz tili|english)$/i.test(
-    (subject || "").trim(),
-  );
+  /^(matematika|algebra|geometriya)$/i.test((subject || "").trim());
 export const documentPath = (kind: string) =>
   kind === "conspect"
     ? "conspects"

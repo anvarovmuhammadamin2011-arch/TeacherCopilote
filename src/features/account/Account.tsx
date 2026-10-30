@@ -233,16 +233,7 @@ export function Profile() {
               {fields.map(([key, label, type]) => (
                 <Field label={label} key={key}>
                   {key === "subject" ? (
-                    <select
-                      value={profile.subject}
-                      onChange={(e) =>
-                        setProfile({ ...profile, subject: e.target.value })
-                      }
-                    >
-                      {["Matematika", "Ingliz tili"].map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
+                    <input value="Matematika" readOnly />
                   ) : (
                     <input
                       required={["firstName", "lastName", "email"].includes(
@@ -341,16 +332,7 @@ export function Settings() {
             <>
               <h2>Standart sozlamalar</h2>
               <Field label="Asosiy fan">
-                <select
-                  value={String(
-                    db.preferences.defaultSubject || db.teacher.subject,
-                  )}
-                  onChange={(e) => preference("defaultSubject", e.target.value)}
-                >
-                  {["Matematika", "Ingliz tili"].map((x) => (
-                    <option key={x}>{x}</option>
-                  ))}
-                </select>
+                <input value="Matematika" readOnly />
               </Field>
               <Field label="Asosiy sinf">
                 <select

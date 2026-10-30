@@ -54,7 +54,7 @@ export default function Materials() {
     ...db.quizzes.map((x) => ({
       id: x.id,
       title: x.title,
-      category: "Testlar",
+      category: x.kind === "assessment" ? "Nazorat ishlari" : "Testlar",
       date: x.date,
       href: "/teacher/quizzes/" + x.id,
     })),
@@ -85,6 +85,8 @@ export default function Materials() {
     ...new Set([
       "Dars rejalari",
       "Testlar",
+      "Nazorat ishlari",
+      "Mashqlar",
       "Konspektlar",
       "Uy vazifalari",
       "PDF",

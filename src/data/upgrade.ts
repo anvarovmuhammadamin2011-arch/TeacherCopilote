@@ -54,6 +54,7 @@ function upgradeTeacherDatabase(raw: unknown): Database {
       grade: c.grade,
       section: c.section,
       schoolName: c.schoolName,
+      currentTopic: c.currentTopic,
       archived: c.archived,
     })),
     teacherClassAssignments: (
@@ -80,6 +81,8 @@ function upgradeTeacherDatabase(raw: unknown): Database {
       difficulty: q.difficulty,
       language: q.language,
       variants: q.variants,
+      kind: q.kind,
+      answerFormat: q.answerFormat,
     })),
     documents:
       old.documents ||
@@ -137,18 +140,18 @@ export function upgradeDatabase(raw: unknown): Database {
   };
   db.lessons = lessons
     .filter((x) => isSupportedSubject(x.subject))
-    .map((x) => ({ ...x, subject: normalizeSubject(x.subject) }));
+    .map((x) => ({ ...x, subject: x.subject }));
   db.quizzes = quizzes
     .filter((x) => isSupportedSubject(x.subject))
-    .map((x) => ({ ...x, subject: normalizeSubject(x.subject) }));
+    .map((x) => ({ ...x, subject: x.subject }));
   db.documents = documents
     .filter((x) => isSupportedSubject(x.subject))
-    .map((x) => ({ ...x, subject: normalizeSubject(x.subject) }));
+    .map((x) => ({ ...x, subject: x.subject }));
   db.materials = materials
     .filter((x) => !x.subject || isSupportedSubject(x.subject))
     .map((x) => ({
       ...x,
-      ...(x.subject ? { subject: normalizeSubject(x.subject) } : {}),
+      ...(x.subject ? { subject: x.subject } : {}),
     }));
   db.teacher.subject = normalizeSubject(db.teacher.subject);
   db.teacherProfiles = db.teacherProfiles

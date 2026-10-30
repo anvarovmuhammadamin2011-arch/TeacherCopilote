@@ -1,3 +1,4 @@
+import MaterialActions from "@/features/mathematics/MaterialActions";
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
 import { useState, useEffect } from "react";
@@ -252,11 +253,11 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
       subject: integrated ? context.subject : "Matematika",
       grade: integrated ? context.grade : "8",
       topic: integrated ? context.topic : "",
-      duration: "45",
-      level: "O‘rta",
+      duration: integrated ? String(context.duration) : "45",
+      level: integrated ? context.level : "O‘rta",
       style: "Interaktiv",
       language: integrated ? context.language : "O‘zbek",
-      instructions: "",
+      instructions: integrated ? context.instructions : "",
     },
   });
   const values = watch();
@@ -268,10 +269,11 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
         await aiService.generateLesson({
           ...data,
           duration: Number(data.duration),
+          ...(integrated ? context : {}),
         }),
       );
-    } catch {
-      toast.error("Darsni yaratib bo‘lmadi. Qayta urinib ko‘ring.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Dars yaratilmadi.");
     } finally {
       setLoading(false);
     }
@@ -349,7 +351,7 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
               onSelect={(topic) => setValue("topic", topic)}
             />
             <div className="form-grid">
-              <Field label="Davomiyligi">
+              <Field label="Davomiyligi" hidden={integrated}>
                 <select {...register("duration")}>
                   {[30, 45, 60, 90].map((n) => (
                     <option value={n} key={n}>
@@ -358,7 +360,7 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
                   ))}
                 </select>
               </Field>
-              <Field label="O‘quvchilar darajasi">
+              <Field label="O‘quvchilar darajasi" hidden={integrated}>
                 <select {...register("level")}>
                   {["Boshlang‘ich", "O‘rta", "Yuqori", "Aralash"].map((s) => (
                     <option key={s}>{s}</option>
@@ -386,7 +388,7 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
                 </select>
               </Field>
             </div>
-            <Field label="Qo‘shimcha ko‘rsatmalar">
+            <Field label="Qo‘shimcha ko‘rsatmalar" hidden={integrated}>
               <textarea
                 rows={3}
                 placeholder="O‘quvchilaringiz haqida yoki maxsus istaklar…"
@@ -422,6 +424,21 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
                 {values.subject} · {values.grade}-sinf · {values.duration}{" "}
                 daqiqa
               </p>
+              <MaterialActions
+                topic={values.topic}
+                subject={values.subject}
+                grade={values.grade}
+                onApply={(r) =>
+                  setSections([
+                    ...sections,
+                    {
+                      title: "Qo‘shimcha tushuntirish va misol",
+                      minutes: 0,
+                      content: r.content + "\n" + r.answerKey,
+                    },
+                  ])
+                }
+              />
               <LessonContent
                 sections={sections}
                 edit={edit}
@@ -568,13 +585,11 @@ export function LessonDetails() {
   const [draft, setDraft] = useState<Lesson | null>(null);
   useEffect(() => {
     if (item)
-      usePreparation
-        .getState()
-        .update({
-          subject: item.subject,
-          grade: item.grade,
-          topic: item.title,
-        });
+      usePreparation.getState().update({
+        subject: item.subject,
+        grade: item.grade,
+        topic: item.title,
+      });
   }, [id]);
   if (!item)
     return (
@@ -630,6 +645,24 @@ export function LessonDetails() {
           </div>
         }
       />
+      <MaterialActions
+        topic={lesson.title}
+        subject={lesson.subject}
+        grade={lesson.grade}
+        onApply={(r) =>
+          setDraft({
+            ...lesson,
+            sections: [
+              ...lesson.sections,
+              {
+                title: "Qo‘shimcha tushuntirish va misol",
+                minutes: 0,
+                content: r.content + "\n" + r.answerKey,
+              },
+            ],
+          })
+        }
+      />
       <Card className="document-card">
         <div className="document-meta">
           <Badge>{lesson.status}</Badge>
@@ -649,6 +682,19 @@ export function LessonDetails() {
           onChange={(sections) => setDraft({ ...lesson, sections })}
         />
         <div className="button-row">
+          <Button
+            variant="outline"
+            onClick={() =>
+              exportWord(
+                lesson.title,
+                lesson.sections
+                  .map((s) => s.title + "\n" + s.content)
+                  .join("\n\n"),
+              )
+            }
+          >
+            Word (.docx)
+          </Button>
           <Button asChild>
             <Link
               to={
