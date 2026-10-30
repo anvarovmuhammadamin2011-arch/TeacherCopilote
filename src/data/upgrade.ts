@@ -81,6 +81,7 @@ function upgradeTeacherDatabase(raw: unknown): Database {
       difficulty: q.difficulty,
       language: q.language,
       variants: q.variants,
+      generation: q.generation,
       kind: q.kind,
       answerFormat: q.answerFormat,
     })),

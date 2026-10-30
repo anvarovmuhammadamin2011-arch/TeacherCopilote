@@ -1,3 +1,4 @@
+import { verifyMathTask } from "./verification";
 export const mathSubjects = ["Matematika", "Algebra", "Geometriya"];
 export const isMathSubject = (s?: string) =>
   mathSubjects.some((x) => x.toLowerCase() === (s || "").trim().toLowerCase());
@@ -43,7 +44,7 @@ export const mathTopics: MathTopic[] = [
     id: "arithmetic",
     title: "Natural sonlar ustida amallar",
     subject: "Matematika",
-    from: 1,
+    from: 3,
     pattern:
       /natural|arifmetik|ko.paytir|hisobla|qo.shish|ayirish|bo.lish|sonlar/,
     rule: "Avval qavs ichidagi, keyin ko‘paytirish va bo‘lish, so‘ng qo‘shish va ayirish amallari bajariladi.",
@@ -494,7 +495,7 @@ export function makeMathTasks(
   variant = 0,
   grade = "8",
 ) {
-  const start = variant * 101 + (Number(grade) >= 8 ? 2 : 0);
+  const start = Number(grade) >= 8 ? 2 : 0;
   const seen = new Set<string>();
   const result: MathTask[] = [];
   for (
@@ -508,7 +509,7 @@ export function makeMathTasks(
         : level;
     const hard = ["Murakkab", "Qiyin", "Yuqori"].includes(difficulty);
     const easy = ["Oson", "Boshlang‘ich"].includes(difficulty);
-    const k = start + n * (hard ? 3 : easy ? 1 : 2);
+    const k = start + n * 4 + (((variant % 4) + 4) % 4);
     let t = topic.make(k);
     // Difficulty changes the method required, as well as numeric parameters.
     if (topic.id === "linear" && !easy) {
@@ -607,6 +608,10 @@ export function makeMathTasks(
   if (result.length < Math.min(50, count))
     throw new Error(
       "Bu mavzuda yetarli takrorlanmaydigan misol topilmadi. Sonni kamaytiring.",
+    );
+  if (result.some((t) => !verifyMathTask(topic.id, t)))
+    throw new Error(
+      "Misol yoki yechim tekshiruvdan o‘tmadi. Qayta urinib ko‘ring.",
     );
   return result;
 }

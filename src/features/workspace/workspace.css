@@ -503,3 +503,30 @@
     flex-direction: column;
   }
 }
+.task-editor {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.task-editor b {
+  font-size: 12px;
+}
+.task-editor details {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.task-editor summary {
+  cursor: pointer;
+  color: var(--primary);
+}
+.generation-summary {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--light);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}

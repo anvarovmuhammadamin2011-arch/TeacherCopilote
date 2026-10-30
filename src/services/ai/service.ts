@@ -1,3 +1,4 @@
+import { taskDocument } from "@/features/mathematics/taskDocument";
 import {
   resolveMathTopic,
   makeMathTasks,
@@ -6,7 +7,7 @@ import {
 import { delay } from "@/services/api/repository";
 import { uid, today } from "@/utils/cn";
 import { useStore } from "@/stores/useStore";
-import type { LessonSection, Question } from "@/types";
+import type { LessonSection, Question, DocumentTask } from "@/types";
 export interface AIInput {
   topic: string;
   subject: string;
@@ -20,6 +21,7 @@ export interface AIInput {
   questionType?: string;
   questionTypes?: string[];
   variant?: number;
+  offset?: number;
   variants?: number;
   answerFormat?: "answer" | "steps";
 }
@@ -38,7 +40,7 @@ export interface AIService {
   generateDocument: (
     i: AIInput,
     kind: "conspect" | "homework",
-  ) => Promise<{ content: string; answerKey: string }>;
+  ) => Promise<{ content: string; answerKey: string; tasks?: DocumentTask[] }>;
   generateHomework: (topic: string) => Promise<string>;
   explainTopic: (topic: string) => Promise<string>;
   sendChatMessage: (message: string) => Promise<string>;
@@ -67,6 +69,15 @@ function validate(i: AIInput) {
     throw new Error(
       "Bu mavzu uchun shablon hali yo‘q. Tavsiya qilingan matematik mavzulardan birini tanlang.",
     );
+  const grade = Number(i.grade);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 11)
+    throw new Error("Sinf 1–11 oralig‘ida bo‘lsin.");
+  if (grade < result.topic.from)
+    throw new Error(
+      `Bu shablon ${result.topic.from}-sinfdan boshlab tavsiya etiladi. Sinfingizga mos mavzu tanlang.`,
+    );
+  if (i.subject !== "Matematika" && result.topic.subject !== i.subject)
+    throw new Error("Mavzu va yo‘nalish mos emas. Yo‘nalishni tekshiring.");
   return result.topic;
 }
 const keyFor = (t: ReturnType<typeof makeMathTasks>[number], i: AIInput) =>
@@ -102,11 +113,11 @@ export class MockAIService implements AIService {
     usage("Test");
     const tasks = makeMathTasks(
       topic,
-      i.count || 5,
+      (i.count || 5) + (i.offset || 0),
       i.level,
       i.variant || 0,
       i.grade,
-    );
+    ).slice(i.offset || 0);
     return delay(
       tasks.map((t, n) => {
         const type =
@@ -214,29 +225,21 @@ export class MockAIService implements AIService {
         500,
       );
     }
-    const content: string[] = [],
-      answers: string[] = [];
-    for (let v = 0; v < (i.variants || 1); v++) {
-      const tasks = makeMathTasks(topic, i.count || 5, i.level, v, i.grade);
-      const label = String.fromCharCode(65 + v) + " VARIANT";
-      content.push(
-        `${label}\nIsm: _____________________  Sana: __________\nQiyinlik: ${i.level || "O‘rta"}\n\nMashqlar\n${tasks.map((t, n) => `${n + 1}. ${t.prompt}\nYechim: ________________________________________`).join("\n\n")}`,
+    const tasks: DocumentTask[] = [];
+    for (let variant = 0; variant < (i.variants || 1); variant++)
+      makeMathTasks(topic, i.count || 5, i.level, variant, i.grade).forEach(
+        (task, position) =>
+          tasks.push({
+            id: uid(),
+            variant,
+            position,
+            prompt: task.prompt,
+            answer: task.answer,
+            steps: task.steps,
+            revision: 0,
+          }),
       );
-      answers.push(
-        `${label}\n${tasks.map((t, n) => `${n + 1}. ${keyFor(t, i)}`).join("\n\n")}`,
-      );
-    }
-    return delay(
-      {
-        content: intro + "\n\n" + content.join("\n\n\f\n"),
-        answerKey:
-          answers.join("\n\n\f\n") +
-          (i.instructions
-            ? "\n\nUstoz qaydi (avtomatik bajarilmagan): " + i.instructions
-            : ""),
-      },
-      500,
-    );
+    return delay({ ...taskDocument(i, tasks), tasks }, 500);
   }
   async generateHomework(topic: string) {
     return (

@@ -110,7 +110,8 @@ export const onboardingRepository = {
     await delay(null, 650);
     let profile: TeacherProfile | undefined;
     let classIds: string[] = [];
-    useStore.getState().mutate((db) => {
+    {
+      const db = useStore.getState().db;
       const existing = db.teacherProfiles.find(
         (p) => p.email.toLowerCase() === personal.email.toLowerCase(),
       );
@@ -131,24 +132,28 @@ export const onboardingRepository = {
         professional,
         employment,
       };
-      db.teacher = {
-        id,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        email: profile.email,
-        avatar: profile.avatar,
-        school: profile.school,
-        subject: profile.subject,
-        grades: profile.grades,
-        experience: profile.experience,
-        bio: profile.bio,
-      };
-      db.teacherProfiles = db.teacherProfiles.filter((p) => p.id !== id);
-      db.teacherProfiles.push(profile);
-      classIds = rows.map((row) =>
-        addClassAssignment(db, row, id, profile!.school),
+      useStore.getState().switchTeacher(
+        {
+          id,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          email: profile.email,
+          avatar: profile.avatar,
+          school: profile.school,
+          subject: profile.subject,
+          grades: profile.grades,
+          experience: profile.experience,
+          bio: profile.bio,
+        },
+        (db) => {
+          db.teacherProfiles = db.teacherProfiles.filter((p) => p.id !== id);
+          db.teacherProfiles.push(profile);
+          classIds = rows.map((row) =>
+            addClassAssignment(db, row, id, profile!.school),
+          );
+        },
       );
-    });
+    }
     return {
       profile: profile!,
       classCount: new Set(classIds).size,
@@ -165,19 +170,17 @@ export const onboardingRepository = {
           p.email.toLowerCase() === email.toLowerCase(),
       );
     if (!p) throw new Error("Avval o‘qituvchi sifatida ro‘yxatdan o‘ting.");
-    useStore.getState().mutate((d) => {
-      d.teacher = {
-        id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        email: p.email,
-        school: p.school,
-        subject: p.subject,
-        grades: p.grades,
-        experience: p.experience,
-        bio: p.bio,
-        avatar: p.avatar,
-      };
+    useStore.getState().switchTeacher({
+      id: p.id,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      email: p.email,
+      school: p.school,
+      subject: p.subject,
+      grades: p.grades,
+      experience: p.experience,
+      bio: p.bio,
+      avatar: p.avatar,
     });
     useAuth.getState().createSession(
       {

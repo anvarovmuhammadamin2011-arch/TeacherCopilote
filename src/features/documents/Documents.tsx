@@ -1,3 +1,6 @@
+import GenerationSummary from "@/features/mathematics/GenerationSummary";
+import TaskEditor from "@/features/mathematics/TaskEditor";
+import { useLocalDraft } from "@/stores/useLocalDraft";
 import MaterialActions from "@/features/mathematics/MaterialActions";
 import SeparateExports from "@/features/mathematics/SeparateExports";
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
@@ -41,9 +44,11 @@ export default function Documents({
   const { id } = useParams();
   const { db, mutate } = useStore();
   const existing = db.documents.find((d) => d.id === id && d.kind === kind);
-  const [document, setDocument] = useState<TeachingDocument | null>(
-    existing ? structuredClone(existing) : null,
-  );
+  const [document, setDocument, draftError] =
+    useLocalDraft<TeachingDocument | null>(
+      kind + ":" + (id || "new"),
+      existing ? structuredClone(existing) : null,
+    );
   const [form, setForm] = useState({
     topic: existing?.title || (integrated ? context.topic : ""),
     subject:
@@ -60,6 +65,7 @@ export default function Documents({
       (integrated ? context.answerFormat : ("steps" as const)),
   });
   const [busy, setBusy] = useState(false);
+  const [generationError, setGenerationError] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [editing, setEditing] = useState(false);
   const navigate = useNavigate();
@@ -70,7 +76,7 @@ export default function Documents({
         grade: existing.grade,
         topic: existing.title,
       });
-    setDocument(existing ? structuredClone(existing) : null);
+
     setForm((f) => ({
       ...f,
       topic: existing?.title || (integrated ? context.topic : ""),
@@ -93,6 +99,9 @@ export default function Documents({
     setShowKey(false);
     setEditing(false);
   }, [id, kind]);
+  useEffect(() => {
+    if (integrated) setForm((f) => ({ ...f, ...context }));
+  }, [context, integrated]);
   const isConspect = kind === "conspect";
   const name = isConspect
     ? "Konspekt"
@@ -110,11 +119,18 @@ export default function Documents({
       toast.error("Nom va matnni kiriting.");
       return;
     }
-    mutate((d) => {
-      const i = d.documents.findIndex((x) => x.id === document.id);
-      if (i < 0) d.documents.unshift(document);
-      else d.documents[i] = document;
-    });
+    try {
+      mutate((d) => {
+        const i = d.documents.findIndex((x) => x.id === document.id);
+        if (i < 0) d.documents.unshift(document);
+        else d.documents[i] = document;
+      });
+    } catch {
+      toast.error(
+        "Saqlanmadi. Qoralama oynada saqlanib turibdi; qurilma xotirasini tekshirib qayta urinib ko‘ring.",
+      );
+      return;
+    }
     toast.success("Hujjat saqlandi");
     navigate("/teacher/" + path + "/" + document.id);
   }
@@ -142,6 +158,17 @@ export default function Documents({
           Natijani darsingizga moslab tahrirlang.
         </p>
       </div>
+      {draftError && (
+        <p role="alert" className="error-text">
+          {draftError}
+        </p>
+      )}
+      {generationError && (
+        <p role="alert" className="error-text">
+          {generationError} Sozlamalar saqlangan. Yaratish tugmasi orqali qayta
+          urinib ko‘ring.
+        </p>
+      )}
       <div className="studio-grid">
         <aside className="studio-sidebar">
           <Card className="studio-config">
@@ -159,31 +186,39 @@ export default function Documents({
                 e.preventDefault();
                 setBusy(true);
                 try {
+                  const parameters = {
+                    ...form,
+                    duration: 45,
+                    ...(integrated ? context : {}),
+                  };
                   const result = await aiService.generateDocument(
-                    { ...form, duration: 45, ...(integrated ? context : {}) },
+                    parameters,
                     kind === "conspect" ? "conspect" : "homework",
                   );
                   setDocument({
                     id: document?.id || uid(),
-                    title: form.topic,
+                    generation: parameters,
+                    title: parameters.topic,
                     kind,
-                    subject: form.subject,
-                    grade: form.grade,
+                    subject: parameters.subject,
+                    grade: parameters.grade,
                     date: today(),
-                    level: form.level,
-                    count: form.count,
-                    language: form.language,
-                    variants: form.variants,
-                    answerFormat: form.answerFormat,
+                    level: parameters.level,
+                    count: parameters.count,
+                    language: parameters.language,
+                    variants: parameters.variants,
+                    answerFormat: parameters.answerFormat,
                     ...result,
                   });
                   setEditing(false);
+                  setGenerationError("");
                 } catch (error) {
-                  toast.error(
+                  const message =
                     error instanceof Error
                       ? error.message
-                      : "Hujjat yaratilmadi.",
-                  );
+                      : "Hujjat yaratilmadi.";
+                  setGenerationError(message);
+                  toast.error(message);
                 } finally {
                   setBusy(false);
                 }
@@ -319,7 +354,11 @@ export default function Documents({
                 )}
                 <Button disabled={busy} className="studio-generate">
                   <Sparkles size={17} className={busy ? "spin" : ""} />
-                  {busy ? "Tayyorlanmoqda…" : "Namuna yaratish"}
+                  {busy
+                    ? "Tayyorlanmoqda…"
+                    : generationError
+                      ? "Qayta urinish"
+                      : "Namuna yaratish"}
                   <ArrowUpRight size={16} />
                 </Button>
               </fieldset>
@@ -413,6 +452,9 @@ export default function Documents({
             </div>
           )}
           {document && !busy && (
+            <GenerationSummary value={document.generation} />
+          )}
+          {document && !busy && (
             <SeparateExports
               title={document.title}
               content={document.content}
@@ -459,18 +501,27 @@ export default function Documents({
                           }
                         />
                       </Field>
-                      <Field label="Hujjat matni">
-                        <textarea
-                          className="studio-editor"
-                          value={document.content}
-                          onChange={(e) =>
-                            setDocument({
-                              ...document,
-                              content: e.target.value,
-                            })
-                          }
+                      {document.tasks?.length && document.generation ? (
+                        <TaskEditor
+                          document={document}
+                          onChange={setDocument}
                         />
-                      </Field>
+                      ) : (
+                        <>
+                          <Field label="Hujjat matni">
+                            <textarea
+                              className="studio-editor"
+                              value={document.content}
+                              onChange={(e) =>
+                                setDocument({
+                                  ...document,
+                                  content: e.target.value,
+                                })
+                              }
+                            />
+                          </Field>
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
@@ -599,6 +650,7 @@ export default function Documents({
                   ...document,
                   content:
                     document.content + "\n\nQo‘shimcha mashq\n" + r.content,
+                  tasks: undefined,
                   answerKey:
                     document.answerKey + "\n\nQo‘shimcha mashq\n" + r.answerKey,
                 })

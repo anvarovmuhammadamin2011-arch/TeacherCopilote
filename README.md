@@ -6,6 +6,7 @@ React 19, Vite, strict TypeScript, TSX and Tailwind CSS. Existing teacher tools 
 npm ci
 npm run dev
 npm run check
+npm test
 npm run build
 ```
 
@@ -21,13 +22,13 @@ Profile and settings are in the top profile menu. No paid plans, subscription ga
 
 ## Prepare a topic once
 
-`usePreparation` stores per-teacher class, mathematics direction, topic, difficulty, task/variant counts, answer format and duration. Mathematics is automatic; directions are Mathematics, Algebra and Geometry. The settings pass between the dashboard, lesson and assignment hubs. Switching material tabs retains draft output while the hub remains mounted. Changing shared settings starts fresh drafts; saving/navigating away can unmount other unsaved outputs.
+`usePreparation` stores per-teacher class, mathematics direction, topic, difficulty, task/variant counts, answer format and duration. Mathematics is automatic; directions are Mathematics, Algebra and Geometry. The settings pass between the dashboard, lesson and assignment hubs. Switching material tabs retains draft output while the hub remains mounted. Changing shared settings retains the previous result and its immutable generation parameters. Drafts are restored per teacher and resource after reload or navigation; saved materials and recovery drafts remain separate.
 
 The shared form offers Oson, O‘rta, Murakkab and Aralash difficulty, 1–30 tasks, 1–4 variants, answer-only or step-by-step teacher keys, and an optional teacher note/textbook page. Notes are explicitly included as teacher notes, not interpreted as free-form AI instructions. Conspects contain one worked example plus the selected number of practice tasks; variant count applies to assignments, not conspects or lesson plans.
 
 ## Mathematics generation
 
-`src/features/mathematics/curriculum.ts` contains 17 deterministic topic banks. Tasks are concrete problems with computed answers and solution steps. Difficulty changes linear-equation structure (one side, both sides, brackets) and fraction denominators; it also changes numeric parameters. Mixed difficulty cycles the levels. Questions are unique within a generated variant. Unknown topics are rejected with a visible message, rather than silently returning unrelated content.
+`src/features/mathematics/curriculum.ts` contains 17 deterministic topic banks. Tasks are concrete problems with computed answers and solution steps. Difficulty changes linear-equation structure (one side, both sides, brackets) and fraction denominators; it also changes numeric parameters. Mixed difficulty cycles the levels. Questions are unique within a generated variant. A/B parameters now occupy the same numeric range and follow the same difficulty/skill sequence. A minimum-grade guard rejects advanced topics below their supported template grade; this is not certified textbook alignment. All computed answers are verified before output, including numeric equality checks of linear-equation solution steps. Unknown topics are rejected with a visible message, rather than silently returning unrelated content.
 
 The seven editable question types, question/option editing, correct-answer selection, ordering, regeneration, previews, multiple variants and saving remain supported. Assessment papers use open numerical answers by default. Teacher solutions can be edited after changing a question; teachers should check their correspondence after manual edits.
 
@@ -43,12 +44,16 @@ Word exports are genuine editable OOXML `.docx` files. Formulas use Unicode/plai
 
 ## Data and authentication
 
-The v7 migration preserves unsupported-subject resources in `legacyArchive`, archives their class assignments, and limits active profiles to Mathematics. Existing mathematical resources, classes and schedules remain usable. Previous English preparation state and registration drafts are reset. No student data is introduced.
+The v8 migration preserves unsupported-subject resources in `legacyArchive`, archives their class assignments, and limits active profiles to Mathematics. Existing mathematical resources, classes and schedules remain usable. Active resources are partitioned per local teacher workspace when switching profiles. Legacy records with no known author remain with the previously active local profile; historical authorship cannot be inferred. A local storage write is checked before saved state is committed. Quota errors retain the current output and avoid a false success notice. Previous English preparation state and registration drafts are reset. No student data is introduced.
 
-This remains a browser-local prototype. Registration creates a local profile; sign-in locates that profile. Passwords are never stored or checked at login, and the UI discloses this limitation. Secure backend authentication, durable multi-user data, account recovery and authorization are still required before real production use. Optional salary is excluded from persistence and exports. Uploaded material metadata is not a substitute for cloud file storage.
+This remains a browser-local prototype. Registration creates a local profile; sign-in locates that profile. Passwords are never stored or checked at login, and the UI discloses this limitation. Secure backend authentication, durable multi-user data, account recovery and authorization are still required before real production use. Optional salary is excluded from persistence and exports. Uploaded material metadata is not a substitute for cloud file storage. Settings → Hisob provides JSON backup download and explicitly confirmed restoration for the same profile/email. It is a manual transfer, not automatic cloud sync.
 
 ## Verification
 
 For the mathematics-only revision, checks cover 8,160 independently calculated answers (17 banks × 4 difficulty modes × 4 variants × 30 tasks), all seven question types for every bank, separate exports, two variants of five exercises, answer-only/steps behavior, exact lesson durations, and preservation during migration. React DOM integration verifies navigation, shared topic, generation, tab retention, assessment saving and the simplify/append action. Word and print-template PDF output are rendered and checked for mathematical symbols and answer separation.
 
-The local managed preview service was unavailable during this revision. Browser visual/responsive checks and a real classroom trial with the mathematics teacher remain to be completed; DOM tests do not establish browser layout quality.
+The preview server starts, but the provided browser runtime is unavailable in this session. Browser visual/responsive checks and a real classroom trial with the mathematics teacher remain to be completed; DOM tests do not establish browser layout quality.
+
+Structured exercise/homework documents now support per-item prompt, answer and solution editing and replacement, recomputing the separate student sheet and answer key together. Legacy text-only documents still use the full-text editor. Manual edits are not symbolically re-solved; teachers must review the changed answer/steps.
+
+`npm test` includes independent numerical checks, rejection of intentionally corrupted answers and linear solution steps, grade/direction checks, account switching/reload, failed-storage rollback and reset isolation. React DOM QA additionally checks immutable output metadata after parameter changes, retry behavior, per-item replacement and draft recovery. Cloud authentication/sync, formal curriculum validation and graphical geometry diagrams remain unimplemented.

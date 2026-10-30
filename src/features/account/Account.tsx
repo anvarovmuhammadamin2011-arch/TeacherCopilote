@@ -1,3 +1,4 @@
+import LocalBackup from "./LocalBackup";
 import { teacherClasses } from "@/services/api/onboardingRepository";
 import { ProfileSections } from "@/features/onboarding/ProfileSections";
 import { useState } from "react";
@@ -427,6 +428,7 @@ export function Settings() {
             </>
           ) : (
             <>
+              <LocalBackup />
               <h2>Hisob va mahalliy ma’lumotlar</h2>
               <p>{db.teacher.email}</p>
               <div className="setting-row">

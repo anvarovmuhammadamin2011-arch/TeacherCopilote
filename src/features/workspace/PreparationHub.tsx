@@ -83,10 +83,11 @@ export default function PreparationHub({
       </div>
       <p className="workspace-mock-note">
         Namuna generatori: hozir mahalliy shablonlardan foydalaniladi. Natijani
-        tekshiring, tahrirlang va saqlang. Sozlamani o‘zgartirish yangi
-        qoralamani boshlaydi.
+        tekshiring, tahrirlang va saqlang. Sozlamalar o‘zgarsa, oldingi natija
+        o‘z parametrlari bilan saqlanadi. Yangi material uchun yaratish
+        tugmasini bosing.
       </p>
-      <div className="integrated-tool" key={JSON.stringify(context)}>
+      <div className="integrated-tool">
         {context.topic.trim().length < 3 ? (
           <div className="workspace-start">
             <BookOpen size={27} />

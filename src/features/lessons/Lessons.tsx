@@ -1,3 +1,5 @@
+import GenerationSummary from "@/features/mathematics/GenerationSummary";
+import { useLocalDraft } from "@/stores/useLocalDraft";
 import MaterialActions from "@/features/mathematics/MaterialActions";
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
 import MathTopicSuggestions from "@/features/mathematics/MathTopicSuggestions";
@@ -31,7 +33,7 @@ import { aiService } from "@/services/ai/service";
 import { subjects } from "@/data/seed";
 import { printDocument, exportWord } from "@/utils/export";
 import { uid, today, dateLabel, downloadText } from "@/utils/cn";
-import type { Lesson, LessonSection } from "@/types";
+import type { Lesson, LessonSection, GenerationSnapshot } from "@/types";
 import {
   PageHead,
   Card,
@@ -238,7 +240,14 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
   const context = usePreparationContext();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [sections, setSections] = useState<LessonSection[] | null>(null);
+  const [result, setResult, draftError] = useLocalDraft<{
+    sections: LessonSection[];
+    parameters: GenerationSnapshot;
+  } | null>("lesson", null);
+  const sections = result?.sections || null;
+  const setSections = (next: LessonSection[]) =>
+    setResult((prev) => (prev ? { ...prev, sections: next } : prev));
+  const [generationError, setGenerationError] = useState("");
   const [edit, setEdit] = useState(false);
   const [saved, setSaved] = useState(false);
   const {
@@ -260,20 +269,48 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
       instructions: integrated ? context.instructions : "",
     },
   });
+  useEffect(() => {
+    if (integrated)
+      Object.entries({
+        ...context,
+        duration: String(context.duration),
+      }).forEach(([key, value]) => {
+        if (
+          [
+            "subject",
+            "grade",
+            "topic",
+            "duration",
+            "level",
+            "language",
+            "instructions",
+          ].includes(key)
+        )
+          setValue(key as keyof Form, String(value));
+      });
+  }, [context, integrated]);
   const values = watch();
+  const output = result?.parameters || {
+    ...values,
+    duration: Number(values.duration),
+  };
   const generate = async (data: Form) => {
     setLoading(true);
     setSaved(false);
     try {
-      setSections(
-        await aiService.generateLesson({
-          ...data,
-          duration: Number(data.duration),
-          ...(integrated ? context : {}),
-        }),
-      );
+      const parameters = {
+        ...data,
+        duration: Number(data.duration),
+        ...(integrated ? context : {}),
+      };
+      const generated = await aiService.generateLesson(parameters);
+      setResult({ sections: generated, parameters });
+      setGenerationError("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Dars yaratilmadi.");
+      const message =
+        error instanceof Error ? error.message : "Dars yaratilmadi.";
+      setGenerationError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -282,15 +319,21 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
     if (!sections) return;
     const lesson: Lesson = {
       id: uid(),
-      title: values.topic,
-      subject: values.subject,
-      grade: values.grade,
-      duration: Number(values.duration),
+      title: output.topic,
+      subject: output.subject,
+      grade: output.grade,
+      duration: Number(output.duration),
       date: today(),
       status: "Tayyor",
       sections,
+      generation: result?.parameters,
     };
-    await mockRepository.createLesson(lesson);
+    try {
+      await mockRepository.createLesson(lesson);
+    } catch {
+      toast.error("Saqlanmadi. Qoralama saqlangan; qayta urinib ko‘ring.");
+      return;
+    }
     setSaved(true);
     toast.success("Dars demo kutubxonaga saqlandi");
     navigate("/teacher/lessons/" + lesson.id);
@@ -310,6 +353,19 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
         AI generator namoyishi: javoblar oldindan tayyorlangan shablonlardan
         olinadi.
       </DemoNote>
+      {draftError && (
+        <p role="alert" className="error-text">
+          {draftError}
+        </p>
+      )}
+      {generationError && (
+        <div role="alert">
+          <p>{generationError} Kiritilgan sozlamalar saqlanib turibdi.</p>
+          <Button variant="outline" onClick={handleSubmit(generate)}>
+            Qayta urinish
+          </Button>
+        </div>
+      )}
       <div className="generator-layout">
         <Card className="generator-form">
           <h2>Dars haqida</h2>
@@ -419,15 +475,16 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
                   {edit ? "Tayyor" : "Tahrirlash"}
                 </Button>
               </div>
-              <h2>{values.topic}</h2>
+              <GenerationSummary value={result?.parameters} />
+              <h2>{output.topic}</h2>
               <p>
-                {values.subject} · {values.grade}-sinf · {values.duration}{" "}
+                {output.subject} · {output.grade}-sinf · {output.duration}{" "}
                 daqiqa
               </p>
               <MaterialActions
-                topic={values.topic}
-                subject={values.subject}
-                grade={values.grade}
+                topic={output.topic}
+                subject={output.subject}
+                grade={output.grade}
                 onApply={(r) =>
                   setSections([
                     ...sections,
@@ -472,7 +529,7 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
                   onClick={() =>
                     sections &&
                     printDocument(
-                      values.topic,
+                      output.topic,
                       sections
                         .map((s) => s.title + "\n" + s.content)
                         .join("\n\n"),
@@ -487,7 +544,7 @@ export function LessonCreate({ integrated = false }: { integrated?: boolean }) {
                   onClick={() =>
                     sections &&
                     exportWord(
-                      values.topic,
+                      output.topic,
                       sections
                         .map((s) => s.title + "\n" + s.content)
                         .join("\n\n"),

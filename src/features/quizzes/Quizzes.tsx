@@ -1,3 +1,5 @@
+import GenerationSummary from "@/features/mathematics/GenerationSummary";
+import { useLocalDraft } from "@/stores/useLocalDraft";
 import MaterialActions from "@/features/mathematics/MaterialActions";
 import SeparateExports from "@/features/mathematics/SeparateExports";
 import { usePreparation, usePreparationContext } from "@/stores/usePreparation";
@@ -148,11 +150,13 @@ export function QuizCreate({
       ? [...new Set(existing.questions.map((q) => q.type))]
       : [assessment ? "Qisqa javob" : "Variantli"],
   );
-  const [test, setTest] = useState<Quiz | null>(
+  const [test, setTest, draftError] = useLocalDraft<Quiz | null>(
+    (assessment ? "assessment" : "test") + ":" + (id || "new"),
     existing ? structuredClone(existing) : null,
   );
   const [active, setActive] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [generationError, setGenerationError] = useState("");
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
   const [keys, setKeys] = useState(false);
@@ -165,7 +169,7 @@ export function QuizCreate({
         topic: existing.title,
         language: existing.language || "O‘zbek",
       });
-    setTest(existing ? structuredClone(existing) : null);
+
     setActive(0);
     setPreview(false);
     if (existing) setTypes([...new Set(existing.questions.map((q) => q.type))]);
@@ -184,6 +188,15 @@ export function QuizCreate({
         answerFormat: existing.answerFormat || "steps",
       }));
   }, [id]);
+  useEffect(() => {
+    if (integrated)
+      setForm((f) => ({
+        ...f,
+        ...context,
+        difficulty: context.level,
+        time: context.duration,
+      }));
+  }, [context, integrated]);
   const variants = test?.variants?.length
     ? test.variants
     : test
@@ -240,6 +253,7 @@ export function QuizCreate({
         });
       setTest({
         id: id || uid(),
+        generation: { ...input(), variants: form.variants },
         kind: existing?.kind || (assessment ? "assessment" : "test"),
         answerFormat: form.answerFormat,
         title: form.topic.trim(),
@@ -256,8 +270,12 @@ export function QuizCreate({
       });
       setActive(0);
       setPreview(false);
+      setGenerationError("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Test yaratilmadi.");
+      const message =
+        error instanceof Error ? error.message : "Test yaratilmadi.";
+      setGenerationError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -308,11 +326,18 @@ export function QuizCreate({
         }
       }
     }
-    mutate((d) => {
-      const i = d.quizzes.findIndex((x) => x.id === test.id);
-      if (i < 0) d.quizzes.unshift(test);
-      else d.quizzes[i] = test;
-    });
+    try {
+      mutate((d) => {
+        const i = d.quizzes.findIndex((x) => x.id === test.id);
+        if (i < 0) d.quizzes.unshift(test);
+        else d.quizzes[i] = test;
+      });
+    } catch {
+      toast.error(
+        "Saqlanmadi. Qoralama oynada saqlanib turibdi; qurilma xotirasini tekshirib qayta urinib ko‘ring.",
+      );
+      return;
+    }
     toast.success("Test va barcha variantlar saqlandi");
     navigate("/teacher/quizzes/" + test.id);
   }
@@ -337,6 +362,19 @@ export function QuizCreate({
         javoblarni tekshiring. Tanlangan til hujjat metama’lumotida; namuna
         matnlari hozir o‘zbekcha.
       </DemoNote>
+      {draftError && (
+        <p role="alert" className="error-text">
+          {draftError}
+        </p>
+      )}
+      {generationError && (
+        <div role="alert">
+          <p>{generationError} Sozlamalaringiz saqlanib turibdi.</p>
+          <Button onClick={() => void generate()} variant="outline">
+            Qayta urinish
+          </Button>
+        </div>
+      )}
       <div className="teacher-generator">
         <Card className="tool-config">
           <h2>Test parametrlari</h2>
@@ -523,6 +561,7 @@ export function QuizCreate({
                   />
                   Javoblarni oldindan ko‘rishda ko‘rsatish
                 </label>
+                <GenerationSummary value={test.generation} />
                 <SeparateExports
                   title={test.title}
                   content={quizText(test, false)}
@@ -662,12 +701,14 @@ export function QuizCreate({
                               setRegenerating(q.id);
                               try {
                                 const generated = await aiService.generateQuiz({
-                                  ...input([q.type]),
+                                  ...(test.generation || input([q.type])),
+                                  questionTypes: [q.type],
+                                  offset: i,
                                   topic: test.title,
                                   subject: test.subject,
                                   grade: test.grade,
                                   count: 1,
-                                  variant: i + active + 1,
+                                  variant: active + (q.revision || 0) + 1,
                                 });
                                 setTest((prev) => {
                                   if (!prev) return prev;
@@ -683,7 +724,11 @@ export function QuizCreate({
                                     ...v,
                                     questions: v.questions.map((item) =>
                                       item.id === q.id
-                                        ? { ...generated[0], id: q.id }
+                                        ? {
+                                            ...generated[0],
+                                            id: q.id,
+                                            revision: (q.revision || 0) + 1,
+                                          }
                                         : item,
                                     ),
                                   }));

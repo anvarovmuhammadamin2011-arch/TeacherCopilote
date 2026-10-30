@@ -1,9 +1,32 @@
+export interface GenerationSnapshot {
+  topic: string;
+  subject: string;
+  grade: string;
+  duration: number;
+  level?: string;
+  count?: number;
+  variants?: number;
+  answerFormat?: "answer" | "steps";
+  instructions?: string;
+  language?: string;
+  style?: string;
+}
+export interface DocumentTask {
+  id: string;
+  variant: number;
+  position: number;
+  prompt: string;
+  answer: string;
+  steps: string[];
+  revision: number;
+}
 export interface LessonSection {
   title: string;
   minutes: number;
   content: string;
 }
 export interface Lesson {
+  generation?: GenerationSnapshot;
   id: string;
   title: string;
   subject: string;
@@ -26,6 +49,7 @@ export interface ClassRoom {
   archived?: boolean;
 }
 export interface Question {
+  revision?: number;
   solution?: string;
   id: string;
   text: string;
@@ -38,6 +62,7 @@ export interface Question {
   pairs?: { left: string; right: string }[];
 }
 export interface Quiz {
+  generation?: GenerationSnapshot;
   kind?: "test" | "assessment";
   answerFormat?: "answer" | "steps";
   id: string;
@@ -168,6 +193,8 @@ export interface RegistrationDraft {
 }
 
 export interface TeachingDocument {
+  tasks?: DocumentTask[];
+  generation?: GenerationSnapshot;
   answerFormat?: "answer" | "steps";
   variants?: number;
   level?: string;
